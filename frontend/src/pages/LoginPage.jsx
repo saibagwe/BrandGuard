@@ -27,6 +27,7 @@ export default function LoginPage() {
     setLoading(true)
     setShowWakeup(false)
     wakeupTimer.current = setTimeout(() => setShowWakeup(true), 3000)
+    
     try {
       await login(em, pw)
       navigate('/dashboard')

@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+
+# Environment - NEVER COMMIT SECRETS
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+
+# Temporary
+*.tmp
+*.bak

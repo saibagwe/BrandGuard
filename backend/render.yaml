@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: brandguard-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt && python seed/seed.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: LLM_MODEL
+        value: gemini-1.5-flash
+      - key: VISION_MODEL
+        value: gemini-1.5-flash
+      - key: EMBED_MODEL
+        value: models/text-embedding-004
+      - key: CORS_ORIGINS
+        sync: false

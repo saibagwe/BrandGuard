@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api } from '../api/client'
+import { api, getErrorMessage } from '../api/client'
 import ServerWakeup from '../components/ServerWakeup'
 import { BookOpen, Plus, Loader2, FileText, CheckCircle2 } from 'lucide-react'
 
@@ -25,7 +25,7 @@ export default function GuidelinesPage() {
       setGuidelines(res.data)
       setIsWakingUp(false)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load guidelines')
+      setError(getErrorMessage(err, 'Failed to load guidelines'))
     } finally {
       clearTimeout(timer)
       setLoading(false)
@@ -55,7 +55,7 @@ export default function GuidelinesPage() {
       setSuccessMsg('Guideline added and chunked/embedded successfully!')
       setTimeout(() => setSuccessMsg(''), 4000)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to add guideline')
+      setError(getErrorMessage(err, 'Failed to add guideline'))
     } finally {
       setSubmitting(false)
     }

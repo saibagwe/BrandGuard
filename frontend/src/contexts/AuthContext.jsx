@@ -44,12 +44,10 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = async (email, password) => {
-    const formData = new FormData()
-    formData.append('username', email)
-    formData.append('password', password)
-
-    const res = await api.post('/auth/login', formData, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    const res = await api.post('/auth/login', {
+      email,
+      username: email,
+      password,
     })
 
     const { access_token } = res.data

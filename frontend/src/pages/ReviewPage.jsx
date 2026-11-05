@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { api } from '../api/client'
+import { api, getErrorMessage } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import IssueBadge from '../components/IssueBadge'
 import ServerWakeup from '../components/ServerWakeup'
@@ -223,7 +223,7 @@ export default function ReviewPage() {
       if (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED') {
         setWakeup(true)
       } else {
-        setError(err.response?.data?.detail || 'Could not load review.')
+        setError(getErrorMessage(err, 'Could not load review.'))
       }
     } finally {
       clearTimeout(wakeupTimer)
@@ -246,7 +246,7 @@ export default function ReviewPage() {
       setDecisionDone(decision)
       await fetchReview()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Action failed.')
+      alert(getErrorMessage(err, 'Action failed.'))
     } finally {
       setDecisionLoading(null)
     }

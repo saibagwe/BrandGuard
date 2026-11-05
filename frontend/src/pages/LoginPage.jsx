@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { getErrorMessage } from '../api/client'
 import { Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 const DEMO_ACCOUNTS = [
@@ -30,12 +31,7 @@ export default function LoginPage() {
       await login(em, pw)
       navigate('/dashboard')
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          (err.code === 'ERR_NETWORK'
-            ? 'Cannot reach server. It may be starting up — try again in 30s.'
-            : 'Login failed. Check credentials.')
-      )
+      setError(getErrorMessage(err, 'Login failed. Check credentials.'))
     } finally {
       clearTimeout(wakeupTimer.current)
       setLoading(false)
@@ -149,10 +145,6 @@ export default function LoginPage() {
           )}
         </div>
       </div>
-
-      <p className="mt-6 text-xs text-gray-400">
-        © {new Date().getFullYear()} Nimbus Bank — Internal Brand Governance Tool
-      </p>
     </div>
   )
 }

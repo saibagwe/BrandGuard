@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../api/client'
+import { api, getErrorMessage } from '../api/client'
 import { Loader2, Sparkles } from 'lucide-react'
 
 export default function SubmitPage() {
@@ -22,7 +22,11 @@ export default function SubmitPage() {
 
     try {
       // 1. Create the review
-      const createRes = await api.post('/reviews', { title: title.trim(), content: content.trim() })
+      const createRes = await api.post('/reviews', {
+        title: title.trim(),
+        content_text: content.trim(),
+        content: content.trim(),
+      })
       const reviewId = createRes.data.id
 
       // 2. Submit for AI analysis
@@ -31,12 +35,7 @@ export default function SubmitPage() {
 
       navigate(`/review/${reviewId}`)
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          (err.code === 'ERR_NETWORK'
-            ? 'Cannot reach server. It may be starting up — try again shortly.'
-            : 'Submission failed. Please try again.')
-      )
+      setError(getErrorMessage(err, 'Submission failed. Please try again.'))
     } finally {
       setLoading(false)
       setStep('')

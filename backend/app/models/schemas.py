@@ -58,7 +58,8 @@ class UserOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 class LoginRequest(BaseModel):
-    email: str
+    email: Optional[str] = None
+    username: Optional[str] = None
     password: str
 
 
@@ -74,7 +75,8 @@ class TokenResponse(BaseModel):
 
 class ReviewCreate(BaseModel):
     title: str
-    content_text: str
+    content_text: Optional[str] = None
+    content: Optional[str] = None
     content_type: Literal["text", "pdf", "docx"] = "text"
 
 
@@ -119,7 +121,8 @@ class GuidelineDocOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 class ApprovalCreate(BaseModel):
-    action: Literal["approved", "changes_requested"]
+    action: Optional[Literal["approved", "changes_requested"]] = None
+    decision: Optional[str] = None
     comment: Optional[str] = None
 
 

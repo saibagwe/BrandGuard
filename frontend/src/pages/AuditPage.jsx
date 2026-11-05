@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api } from '../api/client'
+import { api, getErrorMessage } from '../api/client'
 import ServerWakeup from '../components/ServerWakeup'
 import { ShieldAlert, Loader2, RefreshCw } from 'lucide-react'
 
@@ -18,7 +18,7 @@ export default function AuditPage() {
       setLogs(res.data)
       setIsWakingUp(false)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load audit logs')
+      setError(getErrorMessage(err, 'Failed to load audit logs'))
     } finally {
       clearTimeout(timer)
       setLoading(false)

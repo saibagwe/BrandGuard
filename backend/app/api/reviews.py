@@ -163,10 +163,11 @@ def create_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("creator", "manager", "reviewer", "admin")),
 ):
+    content_text = payload.content_text or payload.content or ""
     review = Review(
         id=str(uuid4()),
         title=payload.title,
-        content_text=payload.content_text,
+        content_text=content_text,
         content_type=payload.content_type,
         status="draft",
         submitted_by=current_user.id,

@@ -34,3 +34,12 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 ---
 
 *Agents: append your changes below this line.*
+
+## Post-Deploy Fix (2026-11-05)
+
+**Fix: Auth Login Payload & React Error #31**  
+- In `frontend/src/contexts/AuthContext.jsx`, changed login request from form data (`application/x-www-form-urlencoded` with key `username`) to JSON `{ email, password }` to match the backend Pydantic `LoginRequest` contract.
+- In `backend/app/models/schemas.py` and `backend/app/api/auth.py`, updated `LoginRequest` to accept either `email` or `username` so both calling conventions succeed.
+- Created `getErrorMessage()` in `frontend/src/api/client.js` to safely normalize FastAPI validation errors (`detail` array of `{type, loc, msg, input}`) into human-readable strings, eliminating React Minified Error #31.
+- Updated `ReviewCreate` and `ApprovalCreate` to be resilient to client field aliases (`content` vs `content_text`, `decision` vs `action`).
+- Removed the footer `© 2026 Nimbus Bank — Internal Brand Governance Tool` from `LoginPage.jsx`.

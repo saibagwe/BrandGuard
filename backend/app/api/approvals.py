@@ -18,23 +18,28 @@ router = APIRouter(tags=["approvals"])
 
 
 @router.post("/reviews/{review_id}/approve", response_model=ApprovalOut, status_code=status.HTTP_201_CREATED)
+@router.post("/reviews/{review_id}/decision", response_model=ApprovalOut, status_code=status.HTTP_201_CREATED)
 def approve_review(
     review_id: str,
     payload: ApprovalCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("manager", "reviewer", "admin")),
 ):
+    action = payload.action or payload.decision or "approved"
+    if action not in ("approved", "changes_requested"):
+        action = "approved"
+
     review = db.query(Review).filter(Review.id == review_id).first()
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-    if review.status not in ("in_review", "changes_requested"):
+    if review.status not in ("in_review", "changes_requested", "draft"):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot approve a review with status '{review.status}'",
         )
 
     # Update review status
-    if payload.action == "approved":
+    if action == "approved":
         review.status = "approved"
     else:
         review.status = "changes_requested"
@@ -44,7 +49,7 @@ def approve_review(
         id=str(uuid4()),
         review_id=review_id,
         approved_by=current_user.id,
-        action=payload.action,
+        action=action,
         comment=payload.comment,
         created_at=datetime.utcnow(),
     )
@@ -55,7 +60,7 @@ def approve_review(
     audit_service.log(
         db,
         current_user.id,
-        payload.action,
+        action,
         "review",
         review_id,
         detail=payload.comment,

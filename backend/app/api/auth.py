@@ -32,7 +32,13 @@ def _create_access_token(data: dict) -> str:
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user: User | None = db.query(User).filter(User.email == payload.email).first()
+    email = payload.email or payload.username
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email or username is required",
+        )
+    user: User | None = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

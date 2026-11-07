@@ -163,15 +163,25 @@ export default function DashboardPage() {
 
       {/* Recent submissions */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-800">Recent Submissions</h2>
-          {user?.role === 'creator' && (
-            <Link
-              to="/submit"
-              className="text-sm text-nimbus-blue hover:underline font-medium"
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="font-semibold text-gray-800">Recent Submissions</h2>
+            <button
+              onClick={fetchReviews}
+              disabled={loading}
+              title="Refresh reviews"
+              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
+            {user?.role === 'creator' && (
+              <Link
+                to="/submit"
+                className="text-sm text-nimbus-blue hover:underline font-medium"
+              >
+                + New Submission
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">

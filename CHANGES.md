@@ -87,3 +87,9 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - Added summary bar with interactive filter chips by severity (High, Med, Low) and category (Tone, Fact, Claim, etc.), plus a toggle to view/hide dismissed issues.
 - Added responsive design that stacks columns on mobile screens and presents side-by-side on desktop.
 - Added "Submit for approval" workflow: available immediately when 0 HIGH issues are open, or displays a warning with an explicit confirmation step when HIGH issues remain.
+
+
+## Feature: Complete Creator Experience (2026-11-07)
+
+**Feature: Complete Creator Experience & Lifecycle**
+- Implemented complete Creator experience with backend role and ownership enforcement, review lifecycle state machine (`draft` -> `checking` -> `ready` -> `in_review` -> `changes_requested` | `approved`), background check progress polling, in-app content editing with stale version tracking, targeted suggestion acceptance with offset shifting and overlap invalidation, dismissed issue retention on re-checks, 409 stale and high-open confirmation gates on submit, TXT/DOCX corrected exports, and comprehensive audit logging (note: original PDF/DOCX files are never modified; the Creator edits the extracted text and exports corrected text).

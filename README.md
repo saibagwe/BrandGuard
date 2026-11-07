@@ -173,3 +173,16 @@ def run(content: str, context: dict) -> list[Issue]:
 | Embeddings | Gemini text-embedding-004 + numpy cosine similarity |
 | Auth | JWT (python-jose) with bcrypt passwords |
 | Deployment | Vercel (frontend) + Render (backend) |
+
+
+---
+
+## Creator Flow
+
+A 5-step walkthrough of the Creator experience in BrandGuard AI:
+
+1. **Submit Content**: Navigate to "New Review" (`/submit`), enter a title, and either paste raw text or upload a single document file (PDF, DOCX, or TXT). The app strictly enforces the "one text or one file" rule and validates file size (max 10 MB).
+2. **Automated AI Checking**: Review status transitions to `checking`. The Creator workspace displays real-time per-check progress (Tone, Facts, Claims, Accessibility, Visual) polling the backend until status reaches `ready`.
+3. **Interactive Review & Targeted Fixes**: Explore the two-column workspace. Click any highlighted text span to inspect its linked issue card, or click a card to focus its text span. Apply targeted fixes with **Accept**, customize replacements with **Edit**, or **Dismiss** an issue with an optional reason.
+4. **Edit Content & Re-Check**: Need broader revisions? Switch to "Edit text" mode to edit directly inside the workspace. Saving increments `content_version` and marks the report stale. Trigger **Re-check** at any time: new issues are generated, and previously dismissed issues are preserved.
+5. **Submit for Approval & Export**: Submit the review for approval. If edits were made without re-checking, the app alerts you to re-check. If high-severity issues remain open, explicit confirmation is required. Once approved by a Reviewer, the content locks and offers **Copy text**, **Download .txt**, and **Download .docx**.

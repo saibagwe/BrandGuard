@@ -1,4 +1,4 @@
-﻿# API Reference — BrandGuard AI
+# API Reference — BrandGuard AI
 
 Base URL: `https://<your-render-app>.onrender.com/api`
 Local: `http://localhost:8000/api`
@@ -14,7 +14,7 @@ No auth required. Only active accounts with `creator` or `reviewer` roles can au
 
 **Request:**
 ```json
-{ "email": "creator@nimbus.bank", "password": "demo1234" }
+{ "email": "creator@demo.local", "password": "demo1234" }
 ```
 
 **Response 200:**
@@ -24,7 +24,7 @@ No auth required. Only active accounts with `creator` or `reviewer` roles can au
   "token_type": "bearer",
   "user": {
     "id": "uuid",
-    "email": "creator@nimbus.bank",
+    "email": "creator@demo.local",
     "role": "creator",
     "full_name": "Alex Creator"
   }
@@ -232,3 +232,130 @@ See [docs/issue-schema.md](./issue-schema.md).
 ```
 
 HTTP status codes: 400 (bad request), 401 (not authenticated), 403 (forbidden), 404 (not found), 422 (validation error), 500 (server error).
+
+
+---
+
+## Reviewer Decisions
+
+### POST /reviews/{id}/decision
+**Auth:** Reviewer only. Review must be in `in_review` status.
+
+Decide on a submitted review.
+
+**Request body:**
+```json
+{ "action": "approved" | "changes_requested", "comment": "string (required for changes_requested)" }
+```
+
+**Validation:**
+- `action` must be `"approved"` or `"changes_requested"` — any other value returns 422.
+- Status must be `"in_review"` — otherwise 409 `{"code": "wrong_status", "detail": "..."}`.
+- Reviewer cannot decide a review they created — 403.
+- `"changes_requested"` with empty/missing `comment` returns 422.
+- `"approved"` comment is optional.
+
+**Response:** `ReviewOut` with updated `status` and `approval_history`.
+
+**Side effects:** Writes an `audit_log` entry. `changes_requested` sets `review.status = "changes_requested"` (unlocks Creator editing). `approved` locks the review.
+
+---
+
+## Guidelines Management
+
+### POST /guidelines
+**Auth:** Reviewer only.
+
+Create a guideline document from pasted text.
+
+**Request body:**
+```json
+{ "title": "string", "doc_type": "voice|terminology|facts", "content_text": "string" }
+```
+
+**Response:** `GuidelineDocOut`
+
+---
+
+### POST /guidelines/upload
+**Auth:** Reviewer only.
+
+Upload a PDF, DOCX, or TXT file (max 10 MB) to create a guideline document.
+
+**Form fields:** `file` (multipart), `doc_type` (voice|terminology|facts), optional `title`.
+
+**Response:** `GuidelineDocOut`
+
+---
+
+### PUT /guidelines/{id}
+### PATCH /guidelines/{id}
+**Auth:** Reviewer only.
+
+Update title, doc_type, or content of an existing guideline. Re-embeds chunks on content change.
+
+**Request body:** Same as POST (all fields optional for PATCH).
+
+**Response:** `GuidelineDocOut`
+
+---
+
+### DELETE /guidelines/{id}
+**Auth:** Reviewer only.
+
+Delete a guideline document and its embedding chunks.
+
+**Response:** `{"ok": true}` or 204 No Content.
+
+---
+
+## Audit Log
+
+### GET /audit
+**Auth:** Reviewer only.
+
+List audit log entries, newest first.
+
+**Query params:**
+- `user` — filter by actor email (partial match)
+- `action` — filter by exact action string
+- `review_id` — filter by review UUID
+- `limit` — default 50
+- `offset` — default 0
+
+**Response:** Array of `AuditLogOut`:
+```json
+[{
+  "id": "uuid",
+  "actor_id": "uuid",
+  "actor_name": "string",
+  "actor_email": "string",
+  "role": "creator|reviewer",
+  "action": "string",
+  "review_id": "uuid|null",
+  "detail": "string|null",
+  "created_at": "ISO8601"
+}]
+```
+
+**Actions logged:** `review_created`, `content_edited`, `issue_accepted`, `issue_dismissed`, `issue_reopened`, `review_submitted`, `approved`, `changes_requested`, `guideline_created`, `guideline_updated`, `guideline_deleted`.
+
+---
+
+## Updated GET /reviews Visibility
+
+| Role | Statuses visible |
+|------|-----------------|
+| Creator | Only their own reviews (all statuses) |
+| Reviewer | Only `in_review`, `changes_requested`, `approved` (never `draft`, `checking`, `ready`) |
+
+## Updated GET /reviews/{id}
+
+Returns `ReviewOut` which now includes:
+- `creator_name` — full name of the creator
+- `submitted_at` — ISO8601 timestamp when submitted for review
+- `latest_reviewer_comment` — most recent reviewer comment (if any)
+- `approval_history` — array of `ApprovalOut` enriched with `reviewer_name`
+- `no_guidelines` — boolean, true if no guideline documents exist at review creation time
+
+A Reviewer can read any submitted review (`in_review` / `changes_requested` / `approved`). A Creator can only read their own.

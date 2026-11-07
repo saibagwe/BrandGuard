@@ -59,7 +59,7 @@ _SAMPLE_ISSUES = [
         category="tone",
         severity="high",
         location=IssueLocation(start=0, end=9),
-        message="Casual language detected: ['hey', 'guys', 'gonna', 'awesome', 'lol', 'super']. These words violate Nimbus Bank brand voice guidelines.",
+        message="Casual language detected: ['hey', 'guys', 'gonna', 'awesome', 'lol', 'super']. These words violate brand voice guidelines.",
         evidence=IssueEvidence(
             source_doc="Terminology Rules",
             quote="Banned words: awesome, guys, gonna, wanna, lol, super, hey.",
@@ -67,7 +67,7 @@ _SAMPLE_ISSUES = [
         ),
         suggestion=(
             "Rewrite as: 'Discover our summer savings offer. Enjoy 3.2% APY on your "
-            "NimbusGrow Savings account — a rate designed to help you grow your money.'"
+            "Acme Savings account — a rate designed to help you grow your money.'"
         ),
         status="open",
     ),
@@ -77,10 +77,10 @@ _SAMPLE_ISSUES = [
         category="fact",
         severity="high",
         location=IssueLocation(start=72, end=82),
-        message="Incorrect APY stated: '2.5% APY'. Approved fact states NimbusGrow Savings is 3.2% APY.",
+        message="Incorrect APY stated: '2.5% APY'. Approved fact states Acme Savings is 3.2% APY.",
         evidence=IssueEvidence(
             source_doc="Approved Facts",
-            quote="NimbusGrow Savings: 3.2% APY as of Q1 2024.",
+            quote="Acme Savings: 3.2% APY as of Q1 2024.",
             rule_id="FACT-APY-001",
         ),
         suggestion="Replace '2.5% APY' with '3.2% APY'.",
@@ -114,8 +114,8 @@ SAMPLE_REVIEW = ReviewOut(
     content_type="text",
     source_type="text",
     status="ready",
-    submitted_by="creator@nimbus.bank",
-    created_by="creator@nimbus.bank",
+    submitted_by="creator@demo.local",
+    created_by="creator@demo.local",
     content_version=1,
     checked_version=1,
     progress={"tone": "done", "facts": "done", "claims": "done", "accessibility": "done", "visual": "done"},
@@ -200,17 +200,35 @@ def _review_to_out(review: Review, db: Session) -> ReviewOut:
         .order_by(Approval.created_at.asc())
         .all()
     )
+    user_map = {}
+    for a in approvals:
+        if a.approved_by and a.approved_by not in user_map:
+            u = db.query(User).filter(User.id == a.approved_by).first()
+            user_map[a.approved_by] = u.full_name if (u and u.full_name) else (u.email if u else a.approved_by)
+
     approval_history = [
         ApprovalOut(
             id=a.id,
             review_id=a.review_id,
             approved_by=a.approved_by,
             action=a.action,
+            decision=a.action,
+            reviewer_name=user_map.get(a.approved_by),
             comment=a.comment,
             created_at=a.created_at,
         )
         for a in approvals
     ]
+    creator_id = review.created_by or review.submitted_by
+    creator_user = db.query(User).filter(User.id == creator_id).first() if creator_id else None
+    creator_name = (
+        creator_user.full_name
+        if (creator_user and creator_user.full_name)
+        else (creator_user.email if creator_user else creator_id)
+    )
+    sub_at = getattr(review, "submitted_at", None)
+    if not sub_at and review.status in ("in_review", "changes_requested", "approved"):
+        sub_at = review.updated_at
     latest_comment = None
     for a in reversed(approvals):
         if a.comment:
@@ -239,6 +257,8 @@ def _review_to_out(review: Review, db: Session) -> ReviewOut:
         checked_version=review.checked_version,
         submitted_by=review.submitted_by,
         created_by=review.created_by or review.submitted_by,
+        creator_name=creator_name,
+        submitted_at=sub_at,
         progress=progress_dict,
         latest_reviewer_comment=latest_comment,
         approval_history=approval_history,
@@ -461,7 +481,7 @@ def list_reviews(
             or_(Review.created_by == current_user.id, Review.submitted_by == current_user.id)
         )
     else:
-        query = query.filter(Review.status.in_(["in_review", "changes_requested", "approved", "ready"]))
+        query = query.filter(Review.status.in_(["in_review", "changes_requested", "approved"]))
 
     if status:
         query = query.filter(Review.status == status)
@@ -484,8 +504,16 @@ def get_review(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    if current_user.role == "creator" and review.created_by != current_user.id and review.submitted_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied: you can only view your own reviews.")
+    if current_user.role == "creator":
+        if review.created_by != current_user.id and review.submitted_by != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied: you can only view your own reviews.")
+    else:
+        # Reviewers can only access submitted reviews (in_review, changes_requested, approved)
+        if review.status not in ("in_review", "changes_requested", "approved") and review.created_by != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: Reviewers can only access submitted reviews.",
+            )
 
     return _review_to_out(review, db)
 
@@ -843,6 +871,8 @@ def submit_review_for_approval(
         )
 
     review.status = "in_review"
+    review.submitted_by = current_user.id
+    review.submitted_at = datetime.utcnow()
     review.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(review)

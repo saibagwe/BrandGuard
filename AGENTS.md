@@ -146,8 +146,8 @@ See `README.md` for step-by-step deploy instructions.
 
 | Email | Role | Can do |
 |-------|------|--------|
-| creator@nimbus.bank | Creator | Submit content |
-| reviewer@nimbus.bank | Reviewer | Review + approve |
+| creator@demo.local | Creator | Submit content |
+| reviewer@demo.local | Reviewer | Review + approve |
 
 ---
 

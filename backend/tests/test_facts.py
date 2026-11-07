@@ -135,7 +135,16 @@ class TestFactsModule:
         try:
             content = "NimbusGrow Savings now gives 4.8% APY."
 
-            # Review 1: with default approved facts (where APY is 3.2%), LLM flags 4.8% APY as contradicted
+            doc1 = GuidelineDoc(
+                id="fact-doc-001",
+                title="Q1 2024 Approved Rates",
+                doc_type="facts",
+                content_text="NimbusGrow Savings: 3.2% APY as of Q1 2024. FDIC insured up to $250,000.",
+            )
+            db.add(doc1)
+            db.commit()
+
+            # Review 1: with approved facts where APY is 3.2%, LLM flags 4.8% APY as contradicted
             context1 = orchestrator.build_context_from_db(db, review_id="rev-1")
             assert "3.2% APY" in context1["facts"]
 

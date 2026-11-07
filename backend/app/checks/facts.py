@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from app.models.schemas import Issue, IssueEvidence, IssueLocation
 from app.llm.provider import llm
-from app.checks.defaults import DEFAULT_APPROVED_FACTS
+DEFAULT_APPROVED_FACTS = ""
 from app.checks.cache import make_cache_key, get_cached, set_cached
 from app.checks.utils import find_quote_location, format_context_field, compute_context_version
 
@@ -30,10 +30,10 @@ _CHECKS = [
         _INCORRECT_APY,
         "fact",
         "high",
-        "Incorrect APY stated: '2.5% APY'. Approved fact states NimbusGrow Savings is 3.2% APY.",
+        "Incorrect APY stated: '2.5% APY'. Approved fact states the savings rate is 3.2% APY.",
         "Replace '2.5% APY' with '3.2% APY'.",
         "Approved Facts",
-        "NimbusGrow Savings: 3.2% APY as of Q1 2024.",
+        "BrandGuard Savings: 3.2% APY as of Q1 2024.",
         "FACT-APY-001",
     ),
     (
@@ -43,7 +43,7 @@ _CHECKS = [
         "Incorrect intro APR period: '15 months'. Approved fact states 12 months.",
         "Replace '15 months' with '12 months'.",
         "Approved Facts",
-        "NimbusShield Credit Card: 0% intro APR for 12 months.",
+        "BrandGuard Credit Card: 0% intro APR for 12 months.",
         "FACT-APR-001",
     ),
     (
@@ -146,7 +146,7 @@ def run(content: str, context: dict) -> list[Issue]:
             return cached
 
         prompt = (
-            "You are a factual accuracy compliance reviewer for Nimbus Bank.\n\n"
+            "You are a factual accuracy compliance reviewer.\n\n"
             f"Approved Facts:\n{facts}\n\n"
             f"Content to Review:\n\"\"\"{content}\"\"\"\n\n"
             "Task:\n"

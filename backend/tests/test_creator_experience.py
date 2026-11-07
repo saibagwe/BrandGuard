@@ -7,6 +7,7 @@
 - Full end-to-end lifecycle and audit log verification.
 """
 from __future__ import annotations
+from pathlib import Path
 
 import io
 import json
@@ -127,7 +128,7 @@ def test_create_review_from_pdf_and_docx(test_db):
     db, c1, c2, rev, admin = test_db
 
     # 1. From PDF
-    pdf_path = "backend/tests/fixtures/sample.pdf"
+    pdf_path = Path(__file__).parent / "fixtures" / "sample.pdf"
     with open(pdf_path, "rb") as f:
         pdf_raw = f.read()
     pdf_text, pdf_type = extract("sample.pdf", pdf_raw)
@@ -146,7 +147,7 @@ def test_create_review_from_pdf_and_docx(test_db):
     assert pdf_data.source_type == "pdf"
 
     # 2. From DOCX
-    docx_path = "backend/tests/fixtures/sample.docx"
+    docx_path = Path(__file__).parent / "fixtures" / "sample.docx"
     with open(docx_path, "rb") as f:
         docx_raw = f.read()
     docx_text, docx_type = extract("sample.docx", docx_raw)
@@ -184,7 +185,7 @@ def test_create_review_errors(test_db):
     assert "too large" in str(exc_large.value).lower()
 
     # Scanned PDF without extractable text
-    scanned_path = "backend/tests/fixtures/scanned.pdf"
+    scanned_path = Path(__file__).parent / "fixtures" / "scanned.pdf"
     with open(scanned_path, "rb") as f:
         scanned_raw = f.read()
     with pytest.raises(ExtractionError) as exc_scanned:

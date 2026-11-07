@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 from app.models.schemas import Issue, IssueEvidence, IssueLocation
 from app.llm.provider import llm
-from app.checks.defaults import DEFAULT_VOICE_GUIDE, DEFAULT_TERMINOLOGY
+DEFAULT_VOICE_GUIDE = ""
+DEFAULT_TERMINOLOGY = ""
 from app.checks.cache import make_cache_key, get_cached, set_cached
 from app.checks.utils import find_quote_location, format_context_field, compute_context_version
 
@@ -92,11 +93,11 @@ def _run_regex(content: str, review_id: str) -> list[Issue]:
         category="tone",
         severity=severity,
         location=location,
-        message=f"Casual language detected: {unique_matches}. These words violate Nimbus Bank brand voice guidelines.",
+        message=f"Casual language detected: {unique_matches}. These words violate brand voice guidelines.",
         evidence=evidence,
         suggestion=(
             "Rewrite using professional language. Example: 'Discover our summer savings offer. "
-            "Enjoy 3.2% APY on your NimbusGrow Savings account — a rate designed to help you grow your money.'"
+            "Enjoy 3.2% APY on your savings account — a rate designed to help you grow your money.'"
         ),
         status="open",
     )
@@ -171,7 +172,7 @@ def run(content: str, context: dict) -> list[Issue]:
             loc = find_quote_location(content, item.quote)
             evidence = IssueEvidence(
                 source_doc=item.source_doc or "Voice Guide",
-                quote=item.guideline_quote or "Nimbus Bank brand voice guidelines",
+                quote=item.guideline_quote or "brand voice guidelines",
                 rule_id=item.rule_id or "TONE-001",
             )
             llm_issues.append(

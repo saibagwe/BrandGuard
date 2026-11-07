@@ -16,7 +16,7 @@
 - ✅ Issue display with severity, explanation, evidence, and suggested fix
 - ✅ Accept / dismiss issues
 - ✅ Approval workflow (Reviewer can approve)
-- ✅ Seeded Nimbus Bank demo data with 3 planted-issue reviews
+- ✅ Demo data seeded with sample reviews
 
 ## What's Coming (P1)
 
@@ -34,8 +34,8 @@ All use password: **`demo1234`**
 
 | Role | Email | Access |
 |------|-------|--------|
-| Creator | creator@nimbus.bank | Submit content |
-| Reviewer | reviewer@nimbus.bank | Review + approve |
+| Creator | creator@demo.local | Submit content |
+| Reviewer | reviewer@demo.local | Review + approve |
 
 ---
 

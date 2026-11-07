@@ -49,3 +49,12 @@ Only features that work end-to-end appear in the README's "Done" section.
 | Issue | Severity | Workaround | Owner |
 |-------|----------|------------|-------|
 | Original PDF/DOCX files are never modified; the Creator edits the extracted text and exports corrected text | Design note | By design: original uploaded binary files are immutable; creators edit the extracted text and export corrected text via .txt or .docx | Backend Agent |
+
+## Feature: Reviewer Experience (2026-11-08)
+
+| Issue | Severity | Workaround | Owner |
+|-------|----------|------------|-------|
+| submitted_at column added without Alembic migration; on existing DBs, a schema migration or DB reset is needed | Medium | Run `python seed/seed.py --reset` after deploying to Render/Supabase | Backend Agent |
+| `nimbus-*` Tailwind class names still present in DashboardPage, SubmitPage, ReviewPage JSX (they still resolve via alias in tailwind.config.js) | Low | The brand-* aliases work correctly; a future cleanup pass can rename classes | Frontend Agent |
+| Reviewer decision panel only appears on /review/:id page; there is no quick-approve action from the Approvals list page | Low | Reviewer clicks into the review to decide | Frontend Agent |
+| File upload in GuidelinesPage uses POST /guidelines/upload; large files (>10 MB) return a backend 400 error that is surfaced to the user | Low | Keep guideline files under 10 MB | Frontend Agent |

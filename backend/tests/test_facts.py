@@ -163,7 +163,7 @@ class TestFactsModule:
                 assert len(issues_run1) == 1
                 assert "3.2% APY" in issues_run1[0].evidence.quote
 
-                # Now Admin uploads a new GuidelineDoc with updated facts!
+                # Now a new GuidelineDoc is uploaded with updated facts!
                 new_doc = GuidelineDoc(
                     id="fact-doc-002",
                     title="Q4 2026 Approved Rates",

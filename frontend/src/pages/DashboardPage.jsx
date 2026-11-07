@@ -17,9 +17,7 @@ import {
 
 const ROLE_LABELS = {
   creator: 'Content Creator',
-  manager: 'Brand Manager',
   reviewer: 'Brand Reviewer',
-  admin: 'Administrator',
 }
 
 const STATUS_CONFIG = {
@@ -163,17 +161,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Reviews Panel */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        {/* Header & Filter Controls */}
-        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="font-semibold text-gray-800">Your Reviews</h2>
-            <button
-              onClick={fetchReviews}
-              disabled={loading}
-              title="Refresh reviews"
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+      {/* Recent submissions */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-800">Recent Submissions</h2>
+          {user?.role === 'creator' && (
+            <Link
+              to="/submit"
+              className="text-sm text-nimbus-blue hover:underline font-medium"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
@@ -222,21 +217,17 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : reviews.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <FileText size={44} className="mx-auto text-gray-300 mb-3" />
-            <h3 className="text-base font-semibold text-gray-700">No reviews found</h3>
-            <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
-              {statusFilter !== 'all'
-                ? `You don't have any reviews matching the '${statusFilter.replace('_', ' ')}' filter.`
-                : 'Get started by creating a new review with your text or document.'}
-            </p>
-            <Link
-              to="/submit"
-              className="mt-4 inline-flex items-center gap-2 bg-nimbus-blue hover:bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              <PlusCircle size={16} />
-              Create Review
-            </Link>
+          <div className="px-6 py-12 text-center">
+            <FileText size={40} className="mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-500 text-sm">No submissions yet.</p>
+            {user?.role === 'creator' && (
+              <Link
+                to="/submit"
+                className="mt-3 inline-block bg-nimbus-blue text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+              >
+                Submit Content
+              </Link>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

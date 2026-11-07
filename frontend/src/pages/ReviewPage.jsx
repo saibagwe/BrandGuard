@@ -684,20 +684,19 @@ export default function ReviewPage() {
   const isChangesRequested = review.status === 'changes_requested'
   const isStale = review.is_stale || (review.checked_version !== review.content_version)
   const allIssues = review.issues || []
+  const canDecide = user?.role === 'reviewer' && review.status === 'in_review'
 
-  // Filter issues
-  const filteredIssues = allIssues.filter((iss) => {
-    // Status filter
-    if (statusFilter === 'open' && iss.status !== 'open') return false
-    if (statusFilter === 'accepted' && !['accepted', 'edited'].includes(iss.status)) return false
-    if (statusFilter === 'dismissed' && iss.status !== 'dismissed') return false
-
-    // Severity filter
-    if (activeSeverityFilter && iss.severity !== activeSeverityFilter) return false
-
-    // Category filter
-    if (activeCategoryFilter && iss.category !== activeCategoryFilter) return false
-
+  // Apply filters and dismissed toggle
+  const visibleIssues = allIssues.filter((iss) => {
+    if (iss.status === 'dismissed' && !showDismissed) return false
+    if (activeFilters.length === 0) return true
+    const sevMatch = activeFilters.includes(iss.severity)
+    const catMatch = activeFilters.some((f) => f === `cat:${iss.category}`)
+    const hasSev = activeFilters.some((f) => ['high', 'medium', 'low'].includes(f))
+    const hasCat = activeFilters.some((f) => f.startsWith('cat:'))
+    if (hasSev && hasCat) return sevMatch || catMatch
+    if (hasSev) return sevMatch
+    if (hasCat) return catMatch
     return true
   })
 

@@ -23,7 +23,7 @@ def approve_review(
     review_id: str,
     payload: ApprovalCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("manager", "reviewer", "admin")),
+    current_user: User = Depends(require_role("reviewer")),
 ):
     action = payload.action or payload.decision or "approved"
     if action not in ("approved", "changes_requested"):
@@ -79,7 +79,7 @@ def approve_review(
 @router.get("/approvals", response_model=list[ReviewOut])
 def list_pending_approvals(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("manager", "reviewer", "admin")),
+    current_user: User = Depends(require_role("reviewer")),
 ):
     """Return reviews currently in_review status (pending approval)."""
     reviews = db.query(Review).filter(Review.status == "in_review").all()

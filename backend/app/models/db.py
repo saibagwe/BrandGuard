@@ -20,7 +20,7 @@ class User(Base):
     id = Column(String(36), primary_key=True, default=_uuid)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(SAEnum("creator", "manager", "reviewer", "admin", name="user_role"), nullable=False)
+    role = Column(SAEnum("creator", "reviewer", name="user_role"), nullable=False)
     full_name = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=_now)

@@ -5,8 +5,6 @@ import DashboardPage from './pages/DashboardPage'
 import SubmitPage from './pages/SubmitPage'
 import ReviewPage from './pages/ReviewPage'
 import ApprovalsPage from './pages/ApprovalsPage'
-import GuidelinesPage from './pages/GuidelinesPage'
-import AuditPage from './pages/AuditPage'
 import Layout from './components/Layout'
 
 function RequireAuth({ children, roles }) {
@@ -47,7 +45,7 @@ export default function App() {
           <Route
             path="/submit"
             element={
-              <RequireAuth roles={['creator', 'manager']}>
+              <RequireAuth roles={['creator']}>
                 <Layout><SubmitPage /></Layout>
               </RequireAuth>
             }
@@ -63,24 +61,8 @@ export default function App() {
           <Route
             path="/approvals"
             element={
-              <RequireAuth roles={['manager', 'reviewer']}>
+              <RequireAuth roles={['reviewer']}>
                 <Layout><ApprovalsPage /></Layout>
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/guidelines"
-            element={
-              <RequireAuth roles={['admin']}>
-                <Layout><GuidelinesPage /></Layout>
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/audit"
-            element={
-              <RequireAuth roles={['admin']}>
-                <Layout><AuditPage /></Layout>
               </RequireAuth>
             }
           />

@@ -46,6 +46,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+    if user.role not in ("creator", "reviewer"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role no longer supported")
 
     token_data = {
         "sub": user.id,

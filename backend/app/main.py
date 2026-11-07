@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import init_db, get_db
-from app.api import auth, reviews, guidelines, approvals, audit
+from app.api import auth, reviews, guidelines, approvals
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,7 +54,6 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(reviews.router, prefix="/api")
 app.include_router(guidelines.router, prefix="/api")
 app.include_router(approvals.router, prefix="/api")
-app.include_router(audit.router, prefix="/api")
 
 
 # ---------------------------------------------------------------------------

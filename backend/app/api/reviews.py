@@ -392,7 +392,7 @@ async def upload_review(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role("creator", "manager", "reviewer", "admin")),
+    current_user: User = Depends(require_role("creator", "reviewer")),
 ):
     raw = await file.read()
     filename = file.filename or ""
@@ -553,7 +553,7 @@ def recheck_review(
     background_tasks: BackgroundTasks,
     sync: bool = False,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("creator", "reviewer")),
 ):
     review = db.query(Review).filter(Review.id == review_id, Review.is_deleted == False).first()
     if not review:
@@ -969,7 +969,7 @@ def update_issue_status(
     issue_id: str,
     payload: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("reviewer")),
 ):
     issue = (
         db.query(IssueDB)

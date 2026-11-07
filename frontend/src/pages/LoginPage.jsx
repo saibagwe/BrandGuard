@@ -6,9 +6,7 @@ import { Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 const DEMO_ACCOUNTS = [
   { label: 'Try as Creator', email: 'creator@nimbus.bank', password: 'demo1234', color: 'bg-nimbus-blue hover:bg-blue-700' },
-  { label: 'Try as Manager', email: 'manager@nimbus.bank', password: 'demo1234', color: 'bg-nimbus-green hover:bg-green-600' },
   { label: 'Try as Reviewer', email: 'reviewer@nimbus.bank', password: 'demo1234', color: 'bg-purple-600 hover:bg-purple-700' },
-  { label: 'Try as Admin', email: 'admin@nimbus.bank', password: 'demo1234', color: 'bg-nimbus-gold hover:bg-yellow-500 text-gray-900' },
 ]
 
 export default function LoginPage() {

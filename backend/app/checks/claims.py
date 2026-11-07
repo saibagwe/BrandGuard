@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 from app.models.schemas import Issue, IssueEvidence, IssueLocation
 from app.llm.provider import llm
-from app.checks.defaults import DEFAULT_VOICE_GUIDE, DEFAULT_APPROVED_FACTS
+DEFAULT_VOICE_GUIDE = ""
+DEFAULT_APPROVED_FACTS = ""
 from app.checks.cache import make_cache_key, get_cached, set_cached
 from app.checks.utils import find_quote_location, format_context_field, compute_context_version
 
@@ -132,7 +133,7 @@ def run(content: str, context: dict) -> list[Issue]:
             return cached
 
         prompt = (
-            "You are a brand compliance reviewer evaluating claims in promotional content for Nimbus Bank.\n\n"
+            "You are a brand compliance reviewer evaluating claims in promotional content.\n\n"
             f"Approved Guidelines & Facts:\n{approved_docs}\n\n"
             f"Content to Review:\n\"\"\"{content}\"\"\"\n\n"
             "Task:\n"

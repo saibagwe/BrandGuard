@@ -65,6 +65,7 @@ class Review(Base):
     content_version = Column(Integer, nullable=False, default=1)
     checked_version = Column(Integer, nullable=True, default=None)
     submitted_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    submitted_at = Column(DateTime, nullable=True)
     created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
     progress_json = Column(Text, nullable=True)
     no_guidelines = Column(Boolean, default=False)

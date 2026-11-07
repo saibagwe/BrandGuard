@@ -5,8 +5,8 @@ import { getErrorMessage } from '../api/client'
 import { Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 const DEMO_ACCOUNTS = [
-  { label: 'Try as Creator', email: 'creator@nimbus.bank', password: 'demo1234', color: 'bg-nimbus-blue hover:bg-blue-700' },
-  { label: 'Try as Reviewer', email: 'reviewer@nimbus.bank', password: 'demo1234', color: 'bg-purple-600 hover:bg-purple-700' },
+  { label: 'Try as Creator', email: 'creator@demo.local', password: 'demo1234', color: 'bg-nimbus-blue hover:bg-blue-700' },
+  { label: 'Try as Reviewer', email: 'reviewer@demo.local', password: 'demo1234', color: 'bg-purple-600 hover:bg-purple-700' },
 ]
 
 export default function LoginPage() {
@@ -119,7 +119,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@nimbus.bank"
+                  placeholder="you@example.com"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue"
                 />
               </div>

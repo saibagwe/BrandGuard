@@ -11,11 +11,11 @@ def create_sample_pdf():
         return
 
     sample_text = (
-        "Nimbus Bank Summer Campaign — SAMPLE DOCUMENT\n\n"
-        "Discover our summer savings offer. Enjoy 3.2% APY on your NimbusGrow Savings "
+        "BrandGuard Summer Campaign — SAMPLE DOCUMENT\n\n"
+        "Discover our summer savings offer. Enjoy 3.2% APY on your Acme Savings "
         "account — a rate designed to help you grow your money.\n\n"
-        "NimbusGrow Savings: 3.2% APY as of Q1 2024.\n"
-        "Nimbus Bank is FDIC insured, headquartered in Austin, TX, and was founded in 1987.\n\n"
+        "Acme Savings: 3.2% APY as of Q1 2024.\n"
+        "BrandGuard is FDIC insured, headquartered in Austin, TX, and was founded in 1987.\n\n"
         "Terms and conditions apply. Contact your branch for details.\n"
     )
 
@@ -42,14 +42,14 @@ def create_sample_docx():
         return
 
     doc = Document()
-    doc.add_heading("Nimbus Bank Summer Campaign — SAMPLE DOCUMENT", 0)
+    doc.add_heading("BrandGuard Summer Campaign — SAMPLE DOCUMENT", 0)
     doc.add_paragraph(
-        "Discover our summer savings offer. Enjoy 3.2% APY on your NimbusGrow Savings "
+        "Discover our summer savings offer. Enjoy 3.2% APY on your Acme Savings "
         "account — a rate designed to help you grow your money."
     )
     doc.add_paragraph(
-        "NimbusGrow Savings: 3.2% APY as of Q1 2024. "
-        "Nimbus Bank is FDIC insured, headquartered in Austin, TX, and was founded in 1987."
+        "Acme Savings: 3.2% APY as of Q1 2024. "
+        "BrandGuard is FDIC insured, headquartered in Austin, TX, and was founded in 1987."
     )
     doc.add_paragraph("Terms and conditions apply. Contact your branch for details.")
 

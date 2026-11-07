@@ -12,7 +12,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import init_db, get_db
-from app.api import auth, reviews, guidelines, approvals
+from app.api import auth, reviews, guidelines, approvals, audit
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="BrandGuard AI",
-    description="AI-powered brand compliance review platform for Nimbus Bank",
+    description="AI-powered brand compliance review platform",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -54,6 +54,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(reviews.router, prefix="/api")
 app.include_router(guidelines.router, prefix="/api")
 app.include_router(approvals.router, prefix="/api")
+app.include_router(audit.router, prefix="/api")
 
 
 # ---------------------------------------------------------------------------

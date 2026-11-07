@@ -116,3 +116,38 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - **Database & Seed:**
   - Updated `backend/seed/seed.py` to seed only Creator and Reviewer accounts, associate seeded guidelines with `reviewer`, and clean up any legacy Manager/Admin accounts in the database.
 - **Tests:** Updated `backend/tests/test_api_status_and_guidelines.py` to test status check, read-only guidelines access, reviewer role permissions, and verify that Manager and Admin roles are blocked.
+
+
+---
+
+## feature/reviewer-side — 2026-11-08
+
+### What was built (Reviewer Experience)
+
+**Backend:**
+- `approvals.py` rewritten: `POST /reviews/{id}/decision` with strict 422/409/403 validation; never defaults to approved; logs every decision to audit_log.
+- `GET /approvals?status=` with filter support (default `in_review`), Reviewer-only.
+- `guidelines.py` restored: `POST`, `PUT/PATCH`, `DELETE`, `POST /upload` (Reviewer-only); GET stays open to both roles; re-embeds on create/update; audit log on every write.
+- `audit.py` recreated: `GET /audit` with user/action/review_id filters, paginated, Reviewer-only; enriched with actor_name and actor_email.
+- `reviews.py`: Reviewer list excludes draft/checking/ready; Creator sees only their own; `GET /reviews/{id}` enriched with creator_name, submitted_at, approval_history with reviewer_name, latest_reviewer_comment.
+- `db.py`: Added `submitted_at` column to `Review`.
+- `schemas.py`: Additive fields — `ApprovalOut.reviewer_name`, `ReviewOut.creator_name/submitted_at/no_guidelines`, `AuditLogOut.actor_name/actor_email`.
+- `orchestrator.py` / `checks/`: Removed all Nimbus Bank / NimbusGrow / NimbusShield hardcoded references; defaults.py deleted.
+- `seed.py`: Simplified to creator@demo.local + reviewer@demo.local primary accounts; legacy @nimbus.bank aliases kept for backward compat; no guideline docs or reviews seeded.
+- `pytest.ini` added at repo root and backend/ for clean test discovery.
+- Tests: `test_reviewer_side.py` added (decisions, guidelines CRUD, audit log, full lifecycle).
+
+**Frontend:**
+- `App.jsx`: Role-based routing; RootRedirect; RequireAuth with creatorOnly/reviewerOnly; ErrorBoundary.
+- `Layout.jsx`: Role-based sidebar (Creator: Dashboard + Submit; Reviewer: Review Queue + Guidelines + Audit Log); role-based home link; workspace subtitle from role.
+- `ApprovalsPage.jsx`: Tabs (Pending / Changes Requested / Approved) with count cards; table with issue severity pips.
+- `GuidelinesPage.jsx`: Create via paste or file upload; edit; delete with confirmation; grouped by type; empty state.
+- `AuditPage.jsx`: Filters (user, action, review_id); action badge; review links; empty/loading/error states.
+- `ReviewPage.jsx`: Reviewer decision panel (Approve / Request Changes with comment, validation, loading state); creator-only controls gated by role (Edit Text, Re-check, Submit, Waiting badge, Stale banner, Issue actions).
+- `LoginPage.jsx`: Demo credentials updated to @demo.local.
+- `index.html`: Title changed to "BrandGuard AI".
+- `tailwind.config.js`: Added brand-* color aliases.
+
+**Docs:**
+- `docs/api.md`: Added POST /decision, full Guidelines CRUD, GET /audit, updated GET /reviews visibility rules.
+- `CHANGES.md` (this entry), `KNOWN_ISSUES.md` updated.

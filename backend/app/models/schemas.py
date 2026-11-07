@@ -86,6 +86,8 @@ class ApprovalOut(BaseModel):
     review_id: str
     approved_by: str
     action: str
+    decision: Optional[str] = None
+    reviewer_name: Optional[str] = None
     comment: Optional[str] = None
     created_at: datetime
 
@@ -140,6 +142,8 @@ class ReviewOut(BaseModel):
     checked_version: Optional[int] = None
     submitted_by: Optional[str] = None
     created_by: Optional[str] = None
+    creator_name: Optional[str] = None
+    submitted_at: Optional[datetime] = None
     progress: Optional[dict[str, str]] = None
     latest_reviewer_comment: Optional[str] = None
     approval_history: list[ApprovalOut] = []
@@ -219,6 +223,8 @@ class AuditLogOut(BaseModel):
 
     id: str
     actor_id: Optional[str] = None
+    actor_name: Optional[str] = None
+    actor_email: Optional[str] = None
     action: str
     resource_type: str
     resource_id: str

@@ -1,4 +1,4 @@
-﻿# Architecture â€” BrandGuard AI
+# Architecture â€” BrandGuard AI
 
 ## System Overview
 
@@ -61,7 +61,7 @@ backend/
 â”‚       â”œâ”€â”€ embedding_service.py # Chunk + embed + cosine similarity
 â”‚       â””â”€â”€ audit_service.py     # Audit log helper
 â”œâ”€â”€ seed/
-â”‚   â””â”€â”€ seed.py              # Idempotent seed: users, Nimbus Bank data
+â”‚   â””â”€â”€ seed.py              # Idempotent seed: users and demo data
 â””â”€â”€ tests/
     â””â”€â”€ test_checks.py       # Proves checks catch planted issues
 ```

@@ -453,6 +453,11 @@ export default function ReviewPage() {
   const [showHistory, setShowHistory] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
 
+  // Reviewer decision state
+  const [decisionComment, setDecisionComment] = useState('')
+  const [decisionLoading, setDecisionLoading] = useState(false)
+  const [decisionError, setDecisionError] = useState('')
+
   // Elapsed polling timer for background checks
   const [checkingElapsed, setCheckingElapsed] = useState(0)
 
@@ -609,6 +614,23 @@ export default function ReviewPage() {
     }
   }
 
+  const handleDecide = async (action) => {
+    if (action === 'changes_requested' && !decisionComment.trim()) {
+      setDecisionError('A comment is required when requesting changes.')
+      return
+    }
+    setDecisionLoading(true)
+    setDecisionError('')
+    try {
+      await api.post(`/reviews/${review.id}/decision`, { action, comment: decisionComment.trim() || undefined })
+      navigate('/approvals')
+    } catch (err) {
+      setDecisionError(getErrorMessage(err, 'Could not submit decision.'))
+    } finally {
+      setDecisionLoading(false)
+    }
+  }
+
   const handleCopyText = async () => {
     if (!review?.content_text) return
     try {
@@ -752,8 +774,8 @@ export default function ReviewPage() {
             History
           </button>
 
-          {/* Re-check Button */}
-          {!isLocked && (
+          {/* Re-check Button (Creator only) */}
+          {!isLocked && user?.role !== 'reviewer' && (
             <button
               onClick={handleRecheck}
               disabled={isChecking || recheckLoading}
@@ -764,8 +786,8 @@ export default function ReviewPage() {
             </button>
           )}
 
-          {/* Submit for Approval Button */}
-          {!isLocked && (
+          {/* Submit for Approval Button (Creator only) */}
+          {!isLocked && user?.role !== 'reviewer' && (
             <button
               onClick={() => handleSubmitForApproval(false)}
               disabled={isChecking || submitLoading}
@@ -780,8 +802,8 @@ export default function ReviewPage() {
             </button>
           )}
 
-          {/* Waiting for review indicator */}
-          {review.status === 'in_review' && (
+          {/* Waiting for review indicator (Creator only) */}
+          {review.status === 'in_review' && user?.role !== 'reviewer' && (
             <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
               <Clock size={14} />
               Waiting for Reviewer Approval
@@ -848,7 +870,7 @@ export default function ReviewPage() {
       )}
 
       {/* Stale Banner: content modified since last check */}
-      {isStale && !isChecking && !isLocked && (
+      {isStale && !isChecking && !isLocked && user?.role !== 'reviewer' && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="text-amber-600 shrink-0" size={16} />
@@ -952,7 +974,7 @@ export default function ReviewPage() {
               </h2>
             </div>
 
-            {!isLocked && (
+            {!isLocked && user?.role !== 'reviewer' && (
               <div>
                 {!isEditMode ? (
                   <button
@@ -1054,6 +1076,73 @@ export default function ReviewPage() {
           </div>
 
           <div className="p-4 overflow-y-auto flex-1">
+            {/* Reviewer Decision Panel */}
+            {user?.role === 'reviewer' && (
+              <div className="mb-4">
+                {canDecide ? (
+                  <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3 shadow-sm">
+                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <MessageSquare size={14} />
+                      Reviewer Decision
+                    </h3>
+                    <textarea
+                      value={decisionComment}
+                      onChange={(e) => { setDecisionComment(e.target.value); setDecisionError('') }}
+                      rows={3}
+                      placeholder="Add a comment (required when requesting changes)"
+                      className="w-full text-xs border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    />
+                    {decisionError && (
+                      <p className="text-xs text-red-600 font-medium">{decisionError}</p>
+                    )}
+                    {openHighIssues.length > 0 && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                        &#9888; {openHighIssues.length} high-severity issue(s) still open.
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDecide('approved')}
+                        disabled={decisionLoading}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50"
+                      >
+                        {decisionLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleDecide('changes_requested')}
+                        disabled={decisionLoading}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-50"
+                      >
+                        {decisionLoading ? <Loader2 size={12} className="animate-spin" /> : <AlertCircle size={12} />}
+                        Request Changes
+                      </button>
+                    </div>
+                  </div>
+                ) : review.status === 'approved' ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+                    <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800">Approved</p>
+                      {review.approval_history?.slice(-1)[0]?.reviewer_name && (
+                        <p className="text-xs text-emerald-700">by {review.approval_history.slice(-1)[0].reviewer_name}</p>
+                      )}
+                    </div>
+                  </div>
+                ) : review.status === 'changes_requested' ? (
+                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 flex items-start gap-2">
+                    <AlertCircle size={16} className="text-orange-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-orange-800">Changes Requested</p>
+                      {review.latest_reviewer_comment && (
+                        <p className="text-xs text-orange-700 mt-0.5">&ldquo;{review.latest_reviewer_comment}&rdquo;</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             {/* Background Checking Progress Banner */}
             {isChecking && (
               <ProgressPanel
@@ -1100,7 +1189,7 @@ export default function ReviewPage() {
                   registerRef={(el) => {
                     cardRefs.current[issue.id] = el
                   }}
-                  isLocked={isLocked}
+                  isLocked={isLocked || user?.role === 'reviewer'}
                 />
               ))
             )}

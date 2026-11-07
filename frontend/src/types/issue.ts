@@ -46,6 +46,8 @@ export interface ApprovalHistoryEntry {
   review_id: string;
   approved_by: string;
   action: string;
+  decision?: string | null;
+  reviewer_name?: string | null;
   comment: string | null;
   created_at: string;
 }
@@ -70,6 +72,8 @@ export interface Review {
   checked_version: number | null;
   submitted_by?: { id: string; email: string; full_name: string } | string | null;
   created_by?: string | null;
+  creator_name?: string | null;
+  submitted_at?: string | null;
   progress?: Record<string, "pending" | "running" | "done" | "failed"> | null;
   latest_reviewer_comment?: string | null;
   approval_history?: ApprovalHistoryEntry[];
@@ -92,6 +96,8 @@ export interface GuidelineDoc {
 
 export interface AuditLogEntry {
   id: string;
+  actor_id?: string | null;
+  actor_name?: string | null;
   actor_email: string | null;
   action: string;
   resource_type: string;

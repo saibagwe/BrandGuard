@@ -8,9 +8,7 @@ import { FileText, Clock, CheckCircle, AlertTriangle, ChevronRight } from 'lucid
 
 const ROLE_LABELS = {
   creator: 'Content Creator',
-  manager: 'Brand Manager',
   reviewer: 'Brand Reviewer',
-  admin: 'Administrator',
 }
 
 const STATUS_COLORS = {
@@ -94,7 +92,7 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-800">Recent Submissions</h2>
-          {user?.role !== 'admin' && (
+          {user?.role === 'creator' && (
             <Link
               to="/submit"
               className="text-sm text-nimbus-blue hover:underline font-medium"
@@ -112,7 +110,7 @@ export default function DashboardPage() {
           <div className="px-6 py-12 text-center">
             <FileText size={40} className="mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500 text-sm">No submissions yet.</p>
-            {['creator', 'manager'].includes(user?.role) && (
+            {user?.role === 'creator' && (
               <Link
                 to="/submit"
                 className="mt-3 inline-block bg-nimbus-blue text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"

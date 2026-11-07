@@ -29,7 +29,7 @@ export interface Issue {
   status: IssueStatus;
 }
 
-export type UserRole = "creator" | "manager" | "reviewer" | "admin";
+export type UserRole = "creator" | "reviewer";
 
 export interface User {
   id: string;

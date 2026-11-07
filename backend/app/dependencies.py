@@ -28,7 +28,7 @@ def get_current_user(
         raise credentials_exc
 
     user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.role not in ("creator", "reviewer"):
         raise credentials_exc
     return user
 

@@ -4,35 +4,24 @@ import {
   LayoutDashboard,
   FilePlus,
   ClipboardCheck,
-  CheckSquare,
-  BookOpen,
-  FileText,
   LogOut,
 } from 'lucide-react'
 
 const ROLE_COLORS = {
-  admin: 'bg-orange-100 text-orange-700',
-  manager: 'bg-green-100 text-green-700',
   reviewer: 'bg-purple-100 text-purple-700',
   creator: 'bg-blue-100 text-blue-700',
 }
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard, roles: null },
-  { to: '/submit', label: 'Submit Content', Icon: FilePlus, roles: ['creator', 'manager'] },
-  { to: '/approvals', label: 'Review Queue', Icon: ClipboardCheck, roles: ['manager', 'reviewer'] },
-  { to: '/approvals', label: 'Approvals', Icon: CheckSquare, roles: ['manager', 'reviewer'] },
-  { to: '/guidelines', label: 'Guidelines', Icon: BookOpen, roles: ['admin'] },
-  { to: '/audit', label: 'Audit Log', Icon: FileText, roles: ['admin'] },
+  { to: '/submit', label: 'Submit Content', Icon: FilePlus, roles: ['creator'] },
+  { to: '/approvals', label: 'Review Queue', Icon: ClipboardCheck, roles: ['reviewer'] },
 ]
 
-// Deduplicate nav items (review queue & approvals share /approvals)
 const UNIQUE_NAV = [
   { to: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard, roles: null },
-  { to: '/submit', label: 'Submit Content', Icon: FilePlus, roles: ['creator', 'manager'] },
-  { to: '/approvals', label: 'Review Queue', Icon: ClipboardCheck, roles: ['manager', 'reviewer'] },
-  { to: '/guidelines', label: 'Guidelines', Icon: BookOpen, roles: ['admin'] },
-  { to: '/audit', label: 'Audit Log', Icon: FileText, roles: ['admin'] },
+  { to: '/submit', label: 'Submit Content', Icon: FilePlus, roles: ['creator'] },
+  { to: '/approvals', label: 'Review Queue', Icon: ClipboardCheck, roles: ['reviewer'] },
 ]
 
 export default function Layout({ children }) {

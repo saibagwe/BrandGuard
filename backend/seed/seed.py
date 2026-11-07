@@ -116,10 +116,12 @@ def seed():
         # 1. Users
         # ----------------------------------------------------------------
         print("\n[Users]")
+        # Clean up legacy roles if present
+        db.query(User).filter(User.role.in_(["manager", "admin"])).delete(synchronize_session=False)
+        db.commit()
+
         creator = _get_or_create_user(db, "creator@nimbus.bank", "creator", "Alex Creator")
-        manager = _get_or_create_user(db, "manager@nimbus.bank", "manager", "Sam Manager")
         reviewer = _get_or_create_user(db, "reviewer@nimbus.bank", "reviewer", "Riley Reviewer")
-        admin = _get_or_create_user(db, "admin@nimbus.bank", "admin", "Jordan Admin")
 
         # ----------------------------------------------------------------
         # 2. Guideline docs
@@ -134,7 +136,7 @@ def seed():
                 "Use second-person ('you'). Avoid casual language (hey, guys, gonna, lol, awesome). "
                 "Write at 8th grade reading level. Never use exclamation marks more than once per page."
             ),
-            created_by=admin.id,
+            created_by=reviewer.id,
         )
         terminology_rules = _get_or_create_guideline(
             db,
@@ -146,7 +148,7 @@ def seed():
                 "Banned words: awesome, guys, gonna, wanna, lol, super, hey. "
                 "Product names: NimbusGrow Savings, NimbusFlex Checking, NimbusShield Credit Card."
             ),
-            created_by=admin.id,
+            created_by=reviewer.id,
         )
         approved_facts = _get_or_create_guideline(
             db,
@@ -158,7 +160,7 @@ def seed():
                 "NimbusShield Credit Card: 0% intro APR for 12 months. "
                 "FDIC insured up to $250,000. Founded 1987. Headquartered in Austin, TX."
             ),
-            created_by=admin.id,
+            created_by=reviewer.id,
         )
         visual_guidelines = _get_or_create_guideline(
             db,
@@ -169,7 +171,7 @@ def seed():
                 "Secondary: #F5A623 (Gold), #4CAF50 (Green). "
                 "Logo minimum size: 40px. Never stretch logo."
             ),
-            created_by=admin.id,
+            created_by=reviewer.id,
         )
 
         # ----------------------------------------------------------------
@@ -338,7 +340,7 @@ def seed():
             entries = [
                 AuditLog(
                     id=str(uuid4()),
-                    actor_id=admin.id,
+                    actor_id=reviewer.id,
                     action="create",
                     resource_type="guideline_doc",
                     resource_id=voice_guide.id,

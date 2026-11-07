@@ -10,14 +10,12 @@
 
 ## What Works (Phase 0)
 
-- ✅ Demo login (4 roles: Creator, Manager, Reviewer, Admin)
+- ✅ Demo login (2 roles: Creator, Reviewer)
 - ✅ Submit text content for brand review
 - ✅ AI checks: tone (casual language), facts (incorrect prices/dates), claims (superlative claims)
 - ✅ Issue display with severity, explanation, evidence, and suggested fix
 - ✅ Accept / dismiss issues
-- ✅ Approval workflow (Manager/Reviewer can approve)
-- ✅ Audit log
-- ✅ Guidelines admin (upload new guidelines)
+- ✅ Approval workflow (Reviewer can approve)
 - ✅ Seeded Nimbus Bank demo data with 3 planted-issue reviews
 
 ## What's Coming (P1)
@@ -37,9 +35,7 @@ All use password: **`demo1234`**
 | Role | Email | Access |
 |------|-------|--------|
 | Creator | creator@nimbus.bank | Submit content |
-| Manager | manager@nimbus.bank | Review + approve |
 | Reviewer | reviewer@nimbus.bank | Review + approve |
-| Admin | admin@nimbus.bank | Manage guidelines |
 
 ---
 

@@ -87,3 +87,32 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - Added summary bar with interactive filter chips by severity (High, Med, Low) and category (Tone, Fact, Claim, etc.), plus a toggle to view/hide dismissed issues.
 - Added responsive design that stacks columns on mobile screens and presents side-by-side on desktop.
 - Added "Submit for approval" workflow: available immediately when 0 HIGH issues are open, or displays a warning with an explicit confirmation step when HIGH issues remain.
+
+---
+
+## Refactor: Complete Removal of Manager and Admin Roles (2026-11-07)
+
+**Summary:** Completely removed the Manager and Admin roles from both frontend and backend. The application now operates exclusively with `creator` and `reviewer` roles.
+
+**Frontend Changes:**
+- **Deleted Pages:** Removed `frontend/src/pages/AuditPage.jsx` and `frontend/src/pages/GuidelinesPage.jsx` (exclusively associated with Admin).
+- **Navigation & Layout:** Cleaned up `frontend/src/components/Layout.jsx` by removing navigation links to `/guidelines` and `/audit`, removing `admin` and `manager` from `ROLE_COLORS`, and updating routes for Submit (`creator`) and Review Queue (`reviewer`).
+- **Routing:** Updated `frontend/src/App.jsx` to remove `/guidelines` and `/audit` routes and imports; restricted `/submit` to `creator` and `/approvals` to `reviewer`.
+- **Dashboard:** Updated `frontend/src/pages/DashboardPage.jsx` role labels and submit action buttons to only Creator and Reviewer.
+- **Login:** Removed Manager and Admin demo login buttons from `frontend/src/pages/LoginPage.jsx`.
+- **Review Page:** In `frontend/src/pages/ReviewPage.jsx`, updated `canDecide` permission check to `reviewer` only.
+- **Types:** Updated `frontend/src/types/issue.ts` `UserRole` type definition to `"creator" | "reviewer"`.
+
+**Backend Changes:**
+- **Models:** Updated `User.role` enum in `backend/app/models/db.py` to `SAEnum("creator", "reviewer", name="user_role")`.
+- **Authentication & Authorization:**
+  - In `backend/app/api/auth.py`, enforced rejection of any non-active or non-permitted roles (`"creator"`, `"reviewer"`).
+  - In `backend/app/dependencies.py`, added role validation in `get_current_user` to reject deprecated roles.
+  - In `backend/app/api/approvals.py`, updated approval endpoints to require role `"reviewer"`.
+  - In `backend/app/api/reviews.py`, restricted submission and review creation to `"creator"` and `"reviewer"`, and issue status updates to `"reviewer"`.
+- **Endpoints Removed:**
+  - Removed `backend/app/api/audit.py` and excluded its router from `backend/app/main.py`.
+  - Removed Admin-specific mutation endpoints (`POST /guidelines`, `PUT /guidelines/{id}`, `DELETE /guidelines/{id}`) in `backend/app/api/guidelines.py`, keeping read-only access for authenticated users.
+- **Database & Seed:**
+  - Updated `backend/seed/seed.py` to seed only Creator and Reviewer accounts, associate seeded guidelines with `reviewer`, and clean up any legacy Manager/Admin accounts in the database.
+- **Tests:** Updated `backend/tests/test_api_status_and_guidelines.py` to test status check, read-only guidelines access, reviewer role permissions, and verify that Manager and Admin roles are blocked.

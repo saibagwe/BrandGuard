@@ -563,7 +563,7 @@ export default function ReviewPage() {
   if (!review) return null
 
   const allIssues = review.issues || []
-  const canDecide = ['manager', 'reviewer'].includes(user?.role) && review.status === 'in_review'
+  const canDecide = user?.role === 'reviewer' && review.status === 'in_review'
 
   // Apply filters and dismissed toggle
   const visibleIssues = allIssues.filter((iss) => {

@@ -33,7 +33,7 @@ export default function Layout({ children }) {
     navigate('/login')
   }
 
-  const visibleNav = UNIQUE_NAV.filter(
+  const visibleNav = NAV_ITEMS.filter(
     (item) => !item.roles || item.roles.includes(user?.role)
   )
 

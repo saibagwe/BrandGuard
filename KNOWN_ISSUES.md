@@ -41,3 +41,11 @@ Only features that work end-to-end appear in the README's "Done" section.
 | Image / poster visual review dropped for this round | P1 | Scoped out per hackathon priority; focus remains on text copy, PDF documents, and Word DOCX workflows | Visual Agent |
 | Scanned image-only PDFs with no OCR layer cannot extract text | Low | User must copy/paste text directly or provide digital PDF with selectable text layer | Backend Agent |
 | PPTX / presentation review not supported | Low | Explicitly out of scope; export presentation notes/text to DOCX or paste into review | Frontend Agent |
+
+---
+
+## Feature: Creator Experience (2026-11-07)
+
+| Issue | Severity | Workaround | Owner |
+|-------|----------|------------|-------|
+| Original PDF/DOCX files are never modified; the Creator edits the extracted text and exports corrected text | Design note | By design: original uploaded binary files are immutable; creators edit the extracted text and export corrected text via .txt or .docx | Backend Agent |

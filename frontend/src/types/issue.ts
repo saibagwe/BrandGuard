@@ -38,16 +38,45 @@ export interface User {
   full_name: string;
 }
 
-export type ReviewStatus = "draft" | "in_review" | "changes_requested" | "approved";
+export type ReviewStatus = "draft" | "checking" | "ready" | "in_review" | "changes_requested" | "approved";
 export type ContentType = "text" | "pdf" | "docx";
+
+export interface ApprovalHistoryEntry {
+  id: string;
+  review_id: string;
+  approved_by: string;
+  action: string;
+  comment: string | null;
+  created_at: string;
+}
+
+export interface IssueCounts {
+  high: number;
+  medium: number;
+  low: number;
+  total: number;
+}
 
 export interface Review {
   id: string;
   title: string;
   content_text: string;
+  content?: string;
   content_type: ContentType;
+  source_type?: string;
+  original_filename?: string | null;
   status: ReviewStatus;
-  submitted_by: { id: string; email: string; full_name: string };
+  content_version: number;
+  checked_version: number | null;
+  submitted_by?: { id: string; email: string; full_name: string } | string | null;
+  created_by?: string | null;
+  progress?: Record<string, "pending" | "running" | "done" | "failed"> | null;
+  latest_reviewer_comment?: string | null;
+  approval_history?: ApprovalHistoryEntry[];
+  no_guidelines?: boolean;
+  is_stale?: boolean;
+  message?: string | null;
+  issue_counts?: IssueCounts;
   created_at: string;
   updated_at: string;
   issues: Issue[];

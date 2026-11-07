@@ -55,12 +55,20 @@ class Review(Base):
     title = Column(String(255), nullable=False)
     content_text = Column(Text, nullable=False)
     content_type = Column(SAEnum("text", "pdf", "docx", name="content_type"), nullable=False, default="text")
+    source_type = Column(String(32), nullable=False, default="text")
+    original_filename = Column(String(255), nullable=True)
     status = Column(
-        SAEnum("draft", "in_review", "changes_requested", "approved", name="review_status"),
+        String(32),
         nullable=False,
         default="draft",
     )
+    content_version = Column(Integer, nullable=False, default=1)
+    checked_version = Column(Integer, nullable=True, default=None)
     submitted_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    progress_json = Column(Text, nullable=True)
+    no_guidelines = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
     created_at = Column(DateTime, default=_now)
     updated_at = Column(DateTime, default=_now, onupdate=_now)
 
@@ -88,6 +96,9 @@ class Issue(Base):
         nullable=False,
         default="open",
     )
+    original_quote = Column(Text, nullable=True)
+    dismiss_reason = Column(Text, nullable=True)
+    content_version = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=_now)
 
 

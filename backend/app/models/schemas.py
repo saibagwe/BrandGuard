@@ -70,6 +70,27 @@ class TokenResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Approval schemas
+# ---------------------------------------------------------------------------
+
+class ApprovalCreate(BaseModel):
+    action: Optional[Literal["approved", "changes_requested"]] = None
+    decision: Optional[str] = None
+    comment: Optional[str] = None
+
+
+class ApprovalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    review_id: str
+    approved_by: str
+    action: str
+    comment: Optional[str] = None
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
 # Review schemas
 # ---------------------------------------------------------------------------
 
@@ -77,7 +98,31 @@ class ReviewCreate(BaseModel):
     title: str
     content_text: Optional[str] = None
     content: Optional[str] = None
+    text: Optional[str] = None
     content_type: Literal["text", "pdf", "docx"] = "text"
+
+
+class ReviewSubmitRequest(BaseModel):
+    confirm_high: bool = False
+
+
+class IssueAcceptRequest(BaseModel):
+    replacement: Optional[str] = None
+
+
+class IssueDismissRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+class ContentUpdateRequest(BaseModel):
+    text: str
+
+
+class IssueCounts(BaseModel):
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+    total: int = 0
 
 
 class ReviewOut(BaseModel):
@@ -86,9 +131,22 @@ class ReviewOut(BaseModel):
     id: str
     title: str
     content_text: str
+    content: Optional[str] = None
     content_type: str
+    source_type: Optional[str] = None
+    original_filename: Optional[str] = None
     status: str
+    content_version: int = 1
+    checked_version: Optional[int] = None
     submitted_by: Optional[str] = None
+    created_by: Optional[str] = None
+    progress: Optional[dict[str, str]] = None
+    latest_reviewer_comment: Optional[str] = None
+    approval_history: list[ApprovalOut] = []
+    no_guidelines: bool = False
+    is_stale: bool = False
+    message: Optional[str] = None
+    issue_counts: Optional[IssueCounts] = None
     created_at: datetime
     updated_at: datetime
     issues: list[Issue] = []
@@ -150,27 +208,6 @@ class GuidelineDocOut(BaseModel):
     created_by: Optional[str] = None
     created_at: datetime
     chunks_count: int = 0
-
-
-# ---------------------------------------------------------------------------
-# Approval schemas
-# ---------------------------------------------------------------------------
-
-class ApprovalCreate(BaseModel):
-    action: Optional[Literal["approved", "changes_requested"]] = None
-    decision: Optional[str] = None
-    comment: Optional[str] = None
-
-
-class ApprovalOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    review_id: str
-    approved_by: str
-    action: str
-    comment: Optional[str] = None
-    created_at: datetime
 
 
 # ---------------------------------------------------------------------------

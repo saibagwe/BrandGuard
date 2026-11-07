@@ -1,19 +1,29 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, getErrorMessage } from '../api/client'
-import { Loader2, Sparkles, Upload, X, FileText, File } from 'lucide-react'
+import {
+  Loader2,
+  Sparkles,
+  Upload,
+  X,
+  FileText,
+  File,
+  AlertCircle,
+  CheckCircle2,
+  Lock,
+} from 'lucide-react'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 const FILE_ICONS = {
-  pdf:  <FileText size={18} className="text-red-500" />,
-  docx: <File size={18} className="text-blue-500" />,
-  txt:  <FileText size={18} className="text-gray-500" />,
+  pdf: <FileText size={20} className="text-red-500" />,
+  docx: <File size={20} className="text-blue-500" />,
+  txt: <FileText size={20} className="text-gray-500" />,
 }
 
 function getFileIcon(name = '') {
   const ext = name.split('.').pop()?.toLowerCase()
-  return FILE_ICONS[ext] || <File size={18} className="text-gray-400" />
+  return FILE_ICONS[ext] || <File size={20} className="text-gray-400" />
 }
 
 function formatBytes(n) {
@@ -26,27 +36,41 @@ export default function SubmitPage() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
-  const [mode, setMode] = useState('text') // 'text' | 'file'
   const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [selectedFile, setSelectedFile] = useState(null) // { file: File, error: string|null }
+  const [text, setText] = useState('')
+  const [selectedFile, setSelectedFile] = useState(null) // { file: File, error: string | null }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [step, setStep] = useState('') // 'creating' | 'analyzing' | ''
+
+  // "One text or one file" rule:
+  const isFileActive = !!selectedFile?.file
+  const isTextActive = text.trim().length > 0
 
   const handleFileSelect = (file) => {
     if (!file) return
+    setError('')
+
+    // Client-side size validation
     if (file.size > MAX_FILE_SIZE) {
-      setSelectedFile({ file, error: `File is too large (${formatBytes(file.size)}). Maximum size is 10 MB.` })
+      setSelectedFile({
+        file,
+        error: `File is too large (${formatBytes(file.size)}). Maximum permitted size is 10 MB.`,
+      })
       return
     }
+
+    // Client-side type validation
     const ext = file.name.split('.').pop()?.toLowerCase()
     if (!['pdf', 'docx', 'txt', 'md', 'text'].includes(ext)) {
-      setSelectedFile({ file, error: `Unsupported file type .${ext}. Supported: PDF, DOCX, TXT.` })
+      setSelectedFile({
+        file,
+        error: `Unsupported file format (.${ext}). Only PDF, Word (.docx), and Text (.txt) files are supported.`,
+      })
       return
     }
+
     setSelectedFile({ file, error: null })
-    // Auto-fill title from filename if empty
+    // If title is empty, default title from filename
     if (!title.trim()) {
       setTitle(file.name.replace(/\.[^.]+$/, ''))
     }
@@ -54,275 +78,288 @@ export default function SubmitPage() {
 
   const handleDrop = (e) => {
     e.preventDefault()
+    if (isTextActive) return
     const file = e.dataTransfer.files?.[0]
     if (file) handleFileSelect(file)
+  }
+
+  const clearFile = () => {
+    setSelectedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const clearText = () => {
+    setText('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (mode === 'file') {
-      if (!selectedFile?.file) return setError('Please select a file to upload.')
-      if (selectedFile.error) return setError(selectedFile.error)
-      if (!title.trim()) return setError('Title is required.')
-
-      setLoading(true)
-      setStep('creating')
-      try {
-        const formData = new FormData()
-        formData.append('file', selectedFile.file)
-        // Title is a query param for the upload endpoint
-        const res = await api.post(
-          `/reviews/upload?title=${encodeURIComponent(title.trim())}`,
-          formData
-          // Don't set Content-Type manually — axios sets it with the correct boundary for FormData
-        )
-        navigate(`/review/${res.data.id}`)
-      } catch (err) {
-        setError(getErrorMessage(err, 'Upload failed. Please try again.'))
-      } finally {
-        setLoading(false)
-        setStep('')
-      }
+    const cleanTitle = title.trim()
+    if (!cleanTitle) {
+      setError('Please provide a title for this review.')
       return
     }
 
-    // Text mode
-    if (!title.trim() || !content.trim()) {
-      return setError('Title and content are required.')
+    if (!isFileActive && !isTextActive) {
+      setError('Please either paste your text or select a file to submit.')
+      return
     }
+
+    if (isFileActive && selectedFile.error) {
+      setError(selectedFile.error)
+      return
+    }
+
     setLoading(true)
-    setStep('creating')
-
     try {
-      const createRes = await api.post('/reviews', {
-        title: title.trim(),
-        content_text: content.trim(),
-        content: content.trim(),
-      })
-      const reviewId = createRes.data.id
+      let res
+      if (isFileActive) {
+        // Multipart file submission
+        const formData = new FormData()
+        formData.append('title', cleanTitle)
+        formData.append('file', selectedFile.file)
 
-      setStep('analyzing')
-      await api.post(`/reviews/${reviewId}/submit`)
+        res = await api.post('/reviews', formData)
+      } else {
+        // JSON text submission
+        res = await api.post('/reviews', {
+          title: cleanTitle,
+          text: text.trim(),
+        })
+      }
 
-      navigate(`/review/${reviewId}`)
+      navigate(`/review/${res.data.id}`)
     } catch (err) {
-      setError(getErrorMessage(err, 'Submission failed. Please try again.'))
+      setError(getErrorMessage(err, 'Failed to create review. Please check your submission and try again.'))
     } finally {
       setLoading(false)
-      setStep('')
     }
   }
 
-  const isSubmitDisabled = loading || (
-    mode === 'text'
-      ? !title.trim() || !content.trim()
-      : !title.trim() || !selectedFile?.file || !!selectedFile?.error
-  )
+  const isSubmitDisabled =
+    loading ||
+    !title.trim() ||
+    (!isFileActive && !isTextActive) ||
+    (isFileActive && !!selectedFile?.error)
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Submit Content for Review</h1>
+    <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">New Brand Review</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Our AI will check your content against Nimbus Bank brand guidelines.
+          Submit your content to run automated brand alignment, tone, fact, and claim checks.
         </p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-6 bg-white">
-        <button
-          type="button"
-          onClick={() => setMode('text')}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-            mode === 'text'
-              ? 'bg-nimbus-blue text-white'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Paste Text
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('file')}
-          className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-            mode === 'file'
-              ? 'bg-nimbus-blue text-white'
-              : 'text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          Upload File
-        </button>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* Title */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Title Field */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Content Title <span className="text-red-500">*</span>
+              Review Title <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Q4 Mortgage Campaign Email"
+              placeholder="e.g. Q4 Summer Savings Email Campaign"
               disabled={loading}
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue disabled:bg-gray-50"
             />
           </div>
 
-          {/* Text area OR file picker */}
-          {mode === 'text' ? (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Content <span className="text-red-500">*</span>
+          {/* Submission Mode Guidance */}
+          <div className="bg-blue-50/70 border border-blue-200 rounded-lg px-4 py-3 text-xs text-blue-900 flex items-center justify-between">
+            <span className="font-semibold">Rule: One Text OR One File per review</span>
+            <span className="text-blue-700">
+              {isFileActive
+                ? 'File mode active (text box disabled)'
+                : isTextActive
+                ? 'Text mode active (file upload disabled)'
+                : 'Choose one of the two options below'}
+            </span>
+          </div>
+
+          {/* Option A: Paste Text Box */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                Option A: Paste Text Content
+                {isTextActive && <CheckCircle2 size={15} className="text-emerald-600" />}
               </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Paste your marketing copy, email content, social post, or other brand content here…"
-                disabled={loading}
-                rows={16}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue disabled:bg-gray-50 resize-y"
-                style={{ minHeight: '400px' }}
-              />
-              <p className="text-xs text-gray-400 mt-1">{content.length} characters</p>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                File <span className="text-red-500">*</span>
-              </label>
-
-              {/* Always-present hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.docx,.txt,.md,.text"
-                className="hidden"
-                onChange={(e) => handleFileSelect(e.target.files?.[0])}
-              />
-
-              {/* Drop zone */}
-              {!selectedFile?.file ? (
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-nimbus-blue hover:bg-blue-50 transition-colors"
-                >
-                  <Upload size={28} className="text-gray-400" />
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-gray-600">Drop a file here or click to browse</p>
-                    <p className="text-xs text-gray-400 mt-1">PDF, DOCX, or TXT — max 10 MB</p>
-                  </div>
-                </div>
-              ) : (
-                <div className={`border rounded-xl p-4 flex items-center gap-3 ${
-                  selectedFile.error
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-green-200 bg-green-50'
-                }`}>
-                  {getFileIcon(selectedFile.file.name)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{selectedFile.file.name}</p>
-                    <p className="text-xs text-gray-500">{formatBytes(selectedFile.file.size)}</p>
-                    {selectedFile.error && (
-                      <p className="text-xs text-red-600 mt-0.5">{selectedFile.error}</p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
-                    className="text-gray-400 hover:text-gray-600 shrink-0"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-
-              {/* Change file link */}
-              {selectedFile?.file && (
+              {isTextActive && (
                 <button
                   type="button"
-                  onClick={() => { setSelectedFile(null); if (fileInputRef.current) { fileInputRef.current.value = ''; fileInputRef.current.click() } }}
-                  className="text-xs text-nimbus-blue hover:underline mt-2 block"
+                  onClick={clearText}
+                  disabled={loading}
+                  className="text-xs text-gray-400 hover:text-red-600 font-medium"
                 >
-                  Choose a different file
+                  Clear text
                 </button>
               )}
-
             </div>
-          )}
 
-          {/* Error */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-              {error}
+            <div className="relative">
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={
+                  isFileActive
+                    ? 'Text box is disabled because a file is selected. Clear the file below if you wish to paste text instead.'
+                    : 'Paste marketing copy, social media draft, or customer communication text here…'
+                }
+                disabled={loading || isFileActive}
+                rows={10}
+                className={`w-full border rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue resize-y transition-colors ${
+                  isFileActive
+                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                    : 'border-gray-300 bg-white'
+                }`}
+              />
+              {isFileActive && (
+                <div className="absolute inset-0 bg-gray-50/60 flex items-center justify-center rounded-lg pointer-events-none">
+                  <span className="bg-white px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 shadow-sm flex items-center gap-1.5">
+                    <Lock size={13} /> Text disabled — file attached below
+                  </span>
+                </div>
+              )}
             </div>
-          )}
+            {!isFileActive && (
+              <p className="text-xs text-gray-400">{text.length} characters</p>
+            )}
+          </div>
 
-          {/* Progress */}
-          {loading && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-              <Loader2 className="animate-spin text-nimbus-blue mt-0.5 shrink-0" size={20} />
-              <div>
-                <p className="font-semibold text-nimbus-navy text-sm">
-                  {mode === 'file' && step === 'creating'
-                    ? '📂 Uploading and extracting text…'
-                    : step === 'creating'
-                    ? 'Creating review…'
-                    : '🤖 AI is analyzing your content…'}
-                </p>
-                <p className="text-xs text-blue-600 mt-0.5">
-                  {step === 'analyzing' || (mode === 'file' && step === 'creating')
-                    ? 'Checking tone, claims, accessibility, and brand alignment. This may take 20–60 seconds.'
-                    : 'Setting up your submission…'}
-                </p>
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-gray-200"></div>
+            <span className="flex-shrink mx-4 text-xs font-bold text-gray-400 uppercase tracking-widest">
+              OR
+            </span>
+            <div className="flex-grow border-t border-gray-200"></div>
+          </div>
+
+          {/* Option B: File Picker */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                Option B: Upload Document File
+                {isFileActive && !selectedFile.error && (
+                  <CheckCircle2 size={15} className="text-emerald-600" />
+                )}
+              </label>
+              {isTextActive && (
+                <span className="text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-medium">
+                  Clear text above to enable file upload
+                </span>
+              )}
+            </div>
+
+            {/* Hidden Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,.txt,.md,.text"
+              disabled={loading || isTextActive}
+              className="hidden"
+              onChange={(e) => handleFileSelect(e.target.files?.[0])}
+            />
+
+            {!selectedFile?.file ? (
+              <div
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => {
+                  if (!isTextActive && !loading) fileInputRef.current?.click()
+                }}
+                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 transition-colors ${
+                  isTextActive
+                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                    : 'border-gray-300 hover:border-nimbus-blue hover:bg-blue-50/50 cursor-pointer bg-white'
+                }`}
+              >
+                <Upload size={28} className={isTextActive ? 'text-gray-300' : 'text-gray-400'} />
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-700">
+                    {isTextActive ? 'File upload disabled' : 'Click to select or drop a file'}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Accepts PDF, DOCX, or TXT — maximum 10 MB
+                  </p>
+                </div>
               </div>
+            ) : (
+              <div
+                className={`border rounded-xl p-4 flex items-center gap-3 ${
+                  selectedFile.error
+                    ? 'border-red-300 bg-red-50'
+                    : 'border-emerald-300 bg-emerald-50/50'
+                }`}
+              >
+                {getFileIcon(selectedFile.file.name)}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">
+                    {selectedFile.file.name}
+                  </p>
+                  <p className="text-xs text-gray-500">{formatBytes(selectedFile.file.size)}</p>
+                  {selectedFile.error && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1 font-medium">
+                      <AlertCircle size={13} /> {selectedFile.error}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  disabled={loading}
+                  className="text-gray-400 hover:text-red-600 p-1 rounded-lg transition-colors"
+                  title="Remove file"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 flex items-start gap-2">
+              <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+              <span>{error}</span>
             </div>
           )}
 
-          {/* Submit */}
-          <div className="flex items-center gap-4 pt-2">
+          {/* Submit Action */}
+          <div className="flex items-center gap-4 pt-3 border-t border-gray-100">
             <button
               type="submit"
               disabled={isSubmitDisabled}
-              className="flex items-center gap-2 bg-nimbus-blue text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 bg-nimbus-blue hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {loading ? (
-                <><Loader2 size={16} className="animate-spin" /> {mode === 'file' ? 'Uploading…' : 'Analyzing…'}</>
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Creating review…
+                </>
               ) : (
-                <><Sparkles size={16} /> Submit for AI Review</>
+                <>
+                  <Sparkles size={16} />
+                  Create Review & Start Checks
+                </>
               )}
             </button>
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
               disabled={loading}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              className="text-sm text-gray-500 hover:text-gray-700"
             >
               Cancel
             </button>
           </div>
         </form>
-      </div>
-
-      {/* Tips */}
-      <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-amber-800 mb-2">💡 What gets checked</h3>
-        <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
-          <li>Brand tone and voice alignment with Nimbus Bank guidelines</li>
-          <li>Factual accuracy and unsubstantiated claims</li>
-          <li>Regulatory and compliance language</li>
-          <li>Accessibility and inclusive language</li>
-          {mode === 'file' && (
-            <li>Supported formats: PDF (selectable text only), DOCX, TXT — max 10 MB</li>
-          )}
-        </ul>
       </div>
     </div>
   )

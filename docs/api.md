@@ -1,9 +1,9 @@
 ﻿# API Reference — BrandGuard AI
 
-Base URL: `https://<your-render-app>.onrender.com/api`  
+Base URL: `https://<your-render-app>.onrender.com/api`
 Local: `http://localhost:8000/api`
 
-All authenticated endpoints require `Authorization: Bearer <token>` header.
+All authenticated endpoints require `Authorization: Bearer <token>` header unless explicitly stated.
 
 ---
 
@@ -41,7 +41,7 @@ No auth required. Only active accounts with `creator` or `reviewer` roles can au
 No auth. Returns `{"status": "ok", "version": "0.1.0"}`.
 
 ### GET /api/status
-No auth. Reports database connectivity and whether LLM key is configured (contains no secrets).  
+No auth. Reports database connectivity and whether LLM key is configured (contains no secrets).
 **Response 200:**
 ```json
 {
@@ -59,9 +59,15 @@ No auth. Reports database connectivity and whether LLM key is configured (contai
 **Auth:** Creator, Reviewer  
 **Request:**
 ```json
-{ "title": "My Campaign", "content_text": "...", "content_type": "text" }
+{ "title": "Summer Campaign", "text": "Content to review..." }
 ```
-**Response 201:** ReviewOut (see schema below)
+
+**Request (Multipart):**
+Form fields: `title` (string, optional), `file` (binary PDF, DOCX, or TXT, max 10 MB).
+
+**Errors:** 400 (empty file, oversized >10 MB, unsupported file type, scanned image-only PDF with no extractable text).
+
+**Response 201:** ReviewOut
 
 ---
 
@@ -78,11 +84,15 @@ Creators see own reviews. Reviewers see all in_review+.
 
 ---
 
-### GET /reviews/sample
-**Auth:** None (public, for frontend dev)  
-Returns hardcoded sample review (Nimbus Bank Summer Campaign with 3 planted issues).
+### PUT /reviews/{id}/content
+**Auth:** Creator (owner only)  
+Allowed only when status is `draft`, `ready`, or `changes_requested`. Rejects edits if locked (`checking`, `in_review`, `approved`).  
+Increments `content_version`, marks the report stale (`is_stale: true`, `checked_version < content_version`), and clears location coordinates on open issues.
 
----
+**Request:**
+```json
+{ "text": "Updated content text..." }
+```
 
 ### POST /reviews/{id}/submit
 **Auth:** Creator (own review)  
@@ -103,7 +113,11 @@ Extracts text from the uploaded file, creates a review, runs AI checks in one st
 
 **Errors:** 400 — empty file, >10 MB, unsupported type, scanned PDF with no text, corrupt file
 
-**Response 201:** ReviewOut (status = `in_review`, issues populated)
+### POST /reviews/{id}/issues/{issue_id}/accept
+**Auth:** Creator (owner only)  
+Applies the suggestion (or custom replacement) to the content at the issue's location.  
+Verifies that the text currently at `{start, end}` matches the issue's recorded original quote; if not, returns 400.  
+Increments `content_version` AND `checked_version` together (targeted edit maintains report validity). Shifts `{start, end}` coordinates of subsequent issues, and invalidates coordinates (sets location to null) on any overlapping issues. Marks issue as `accepted` (or `edited` if custom replacement differs from suggestion).
 
 ---
 
@@ -111,16 +125,17 @@ Extracts text from the uploaded file, creates a review, runs AI checks in one st
 **Auth:** Reviewer  
 **Request:**
 ```json
-{
-  "status": "accepted" | "edited" | "dismissed",
-  "edited_suggestion": "optional new suggestion text"
-}
+{ "replacement": "Optional custom replacement text" }
 ```
-**Response 200:** Updated Issue
+
+**Errors:** 400 (review locked, quote mismatch, invalid coordinates), 403 (not the review owner), 404 (review or issue not found).  
+**Response 200:** ReviewOut
 
 ---
 
-## Approvals
+### POST /reviews/{id}/issues/{issue_id}/dismiss
+**Auth:** Creator (owner only)  
+Dismisses the issue with an optional reason stored for compliance and analytics. Dismissed items are preserved during re-checks.
 
 ### POST /reviews/{id}/approve
 **Auth:** Reviewer  
@@ -133,6 +148,9 @@ Extracts text from the uploaded file, creates a review, runs AI checks in one st
 ```
 **Response 200:** ApprovalOut
 
+**Errors:** 400 (review locked), 403 (not owner), 404 (not found).  
+**Response 200:** ReviewOut
+
 ---
 
 ### GET /approvals
@@ -142,7 +160,12 @@ Returns reviews in `in_review` status needing approval.
 
 ---
 
-## Guidelines
+### POST /reviews/{id}/submit
+**Auth:** Creator (owner only)  
+Submits content for reviewer approval. Allowed from `ready` or `changes_requested` status.  
+If content is stale (`content_version != checked_version`), returns 409 `{ "code": "stale" }`.  
+If any HIGH-severity issues remain open, returns 409 `{ "code": "high_open" }` unless explicitly confirmed with `{ "confirm_high": true }`.  
+On success, changes status to `in_review` and locks editing.
 
 ### GET /guidelines
 **Auth:** Creator, Reviewer  

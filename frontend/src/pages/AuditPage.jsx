@@ -44,7 +44,7 @@ export default function AuditPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShieldAlert className="w-7 h-7 text-nimbus-navy" />
+            <ShieldAlert className="w-7 h-7 text-brand-navy" />
             System Audit Log
           </h1>
           <p className="text-gray-500 mt-1">
@@ -64,14 +64,16 @@ export default function AuditPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-gray-400">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-nimbus-blue" />
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-brand-blue" />
             Loading audit records...
           </div>
         ) : error ? (
           <div className="p-6 text-center text-red-600 bg-red-50 text-sm">{error}</div>
         ) : logs.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
-            No audit log entries recorded yet.
+          <div className="p-12 text-center">
+            <ShieldAlert size={40} className="mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-600 font-medium text-sm">No audit records recorded yet.</p>
+            <p className="text-gray-400 text-xs mt-1">Actions such as guideline uploads, content submissions, and reviewer decisions will appear here.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

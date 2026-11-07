@@ -5,10 +5,10 @@ import { getErrorMessage } from '../api/client'
 import { Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 const DEMO_ACCOUNTS = [
-  { label: 'Try as Creator', email: 'creator@nimbus.bank', password: 'demo1234', color: 'bg-nimbus-blue hover:bg-blue-700' },
-  { label: 'Try as Manager', email: 'manager@nimbus.bank', password: 'demo1234', color: 'bg-nimbus-green hover:bg-green-600' },
-  { label: 'Try as Reviewer', email: 'reviewer@nimbus.bank', password: 'demo1234', color: 'bg-purple-600 hover:bg-purple-700' },
-  { label: 'Try as Admin', email: 'admin@nimbus.bank', password: 'demo1234', color: 'bg-nimbus-gold hover:bg-yellow-500 text-gray-900' },
+  { label: 'Try as Creator', email: 'creator@brandguard.ai', password: 'demo1234', color: 'bg-brand-blue hover:bg-blue-700' },
+  { label: 'Try as Manager', email: 'manager@brandguard.ai', password: 'demo1234', color: 'bg-brand-green hover:bg-green-600' },
+  { label: 'Try as Reviewer', email: 'reviewer@brandguard.ai', password: 'demo1234', color: 'bg-purple-600 hover:bg-purple-700' },
+  { label: 'Try as Admin', email: 'admin@brandguard.ai', password: 'demo1234', color: 'bg-brand-gold hover:bg-yellow-500 text-gray-900' },
 ]
 
 export default function LoginPage() {
@@ -50,9 +50,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
       {/* Header strip */}
       <div className="w-full max-w-md">
-        <div className="bg-nimbus-navy rounded-t-2xl px-8 py-6 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl bg-nimbus-blue flex items-center justify-center text-white font-bold text-xl shrink-0">
-            NB
+        <div className="bg-brand-navy rounded-t-2xl px-8 py-6 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-xl bg-brand-blue flex items-center justify-center text-white font-bold text-xl shrink-0">
+            BG
           </div>
           <div className="text-white">
             <h1 className="text-2xl font-bold leading-tight">BrandGuard AI</h1>
@@ -121,8 +121,8 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@nimbus.bank"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue"
+                  placeholder="you@brandguard.ai"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
                 />
               </div>
               <div>
@@ -132,13 +132,13 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-nimbus-navy text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-900 transition-colors disabled:opacity-50"
+                className="w-full bg-brand-navy text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-900 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>

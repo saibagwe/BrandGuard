@@ -73,7 +73,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {/* Welcome banner */}
-      <div className="bg-nimbus-navy text-white rounded-2xl px-7 py-6 mb-8">
+      <div className="bg-brand-navy text-white rounded-2xl px-7 py-6 mb-8">
         <h1 className="text-2xl font-bold mb-1">
           Welcome back, {user?.full_name?.split(' ')[0] || 'User'}! 👋
         </h1>
@@ -84,9 +84,9 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={FileText} label="Total Submissions" value={totalSubmissions} color="bg-nimbus-blue" />
+        <StatCard icon={FileText} label="Total Submissions" value={totalSubmissions} color="bg-brand-blue" />
         <StatCard icon={Clock} label="Pending Review" value={pending} color="bg-yellow-500" />
-        <StatCard icon={CheckCircle} label="Approved" value={approved} color="bg-nimbus-green" />
+        <StatCard icon={CheckCircle} label="Approved" value={approved} color="bg-brand-green" />
         <StatCard icon={AlertTriangle} label="Issues Found" value={issuesFound} color="bg-red-500" />
       </div>
 
@@ -97,7 +97,7 @@ export default function DashboardPage() {
           {user?.role !== 'admin' && (
             <Link
               to="/submit"
-              className="text-sm text-nimbus-blue hover:underline font-medium"
+              className="text-sm text-brand-blue hover:underline font-medium"
             >
               + New Submission
             </Link>
@@ -111,11 +111,12 @@ export default function DashboardPage() {
         ) : reviews.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <FileText size={40} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 text-sm">No submissions yet.</p>
+            <p className="text-gray-600 font-medium text-sm">No submissions yet.</p>
+            <p className="text-gray-400 text-xs mt-1">Submit content to run AI brand compliance checks against configured guidelines.</p>
             {['creator', 'manager'].includes(user?.role) && (
               <Link
                 to="/submit"
-                className="mt-3 inline-block bg-nimbus-blue text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+                className="mt-4 inline-block bg-brand-blue text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
               >
                 Submit Content
               </Link>
@@ -165,7 +166,7 @@ export default function DashboardPage() {
                     <td className="px-6 py-3.5">
                       <Link
                         to={`/review/${r.id}`}
-                        className="inline-flex items-center gap-1 text-nimbus-blue hover:underline text-xs font-medium"
+                        className="inline-flex items-center gap-1 text-brand-blue hover:underline text-xs font-medium"
                       >
                         View <ChevronRight size={14} />
                       </Link>
@@ -176,20 +177,6 @@ export default function DashboardPage() {
             </table>
           </div>
         )}
-      </div>
-
-      {/* Quick access for demo */}
-      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-5">
-        <h3 className="font-semibold text-nimbus-navy mb-2">🚀 Quick Demo</h3>
-        <p className="text-sm text-blue-700 mb-3">
-          Try the sample review to see AI-detected brand issues with highlights and suggestions.
-        </p>
-        <Link
-          to="/review/sample"
-          className="inline-block bg-nimbus-blue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
-        >
-          View Sample Review →
-        </Link>
       </div>
     </div>
   )

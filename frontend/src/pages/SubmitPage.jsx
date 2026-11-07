@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, getErrorMessage } from '../api/client'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles, AlertTriangle } from 'lucide-react'
 
 export default function SubmitPage() {
   const navigate = useNavigate()
@@ -10,9 +10,30 @@ export default function SubmitPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [step, setStep] = useState('') // 'creating' | 'analyzing' | ''
+  const [hasGuidelines, setHasGuidelines] = useState(true)
+  const [checkingGuidelines, setCheckingGuidelines] = useState(true)
+
+  useEffect(() => {
+    api
+      .get('/guidelines')
+      .then((res) => {
+        const docs = Array.isArray(res.data) ? res.data : []
+        setHasGuidelines(docs.length > 0)
+      })
+      .catch(() => {
+        // If checking fails, allow attempt but do not crash
+        setHasGuidelines(true)
+      })
+      .finally(() => {
+        setCheckingGuidelines(false)
+      })
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!hasGuidelines) {
+      return setError('An Administrator must add brand guidelines before content can be reviewed.')
+    }
     if (!title.trim() || !content.trim()) {
       return setError('Title and content are required.')
     }
@@ -47,9 +68,21 @@ export default function SubmitPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Submit Content for Review</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Our AI will check your content against Nimbus Bank brand guidelines.
+          Our AI will check your content against configured brand guidelines.
         </p>
       </div>
+
+      {!checkingGuidelines && !hasGuidelines && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={20} />
+          <div>
+            <h3 className="text-sm font-semibold text-amber-800">No brand guidelines configured</h3>
+            <p className="text-xs text-amber-700 mt-0.5">
+              An Administrator must add brand guidelines (brand voice, terminology, approved facts) before content can be reviewed against them.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -61,9 +94,9 @@ export default function SubmitPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Q4 Mortgage Campaign Email"
+              placeholder="e.g. Q4 Campaign Announcement"
               disabled={loading}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue disabled:bg-gray-50"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:bg-gray-50"
             />
           </div>
 
@@ -77,7 +110,7 @@ export default function SubmitPage() {
               placeholder="Paste your marketing copy, email content, social post, or other brand content here…"
               disabled={loading}
               rows={16}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-nimbus-blue disabled:bg-gray-50 resize-y"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:bg-gray-50 resize-y"
               style={{ minHeight: '400px' }}
             />
             <p className="text-xs text-gray-400 mt-1">{content.length} characters</p>
@@ -91,9 +124,9 @@ export default function SubmitPage() {
 
           {loading && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-              <Loader2 className="animate-spin text-nimbus-blue mt-0.5 shrink-0" size={20} />
+              <Loader2 className="animate-spin text-brand-blue mt-0.5 shrink-0" size={20} />
               <div>
-                <p className="font-semibold text-nimbus-navy text-sm">
+                <p className="font-semibold text-brand-navy text-sm">
                   {step === 'creating' ? 'Creating review…' : '🤖 AI is analyzing your content…'}
                 </p>
                 <p className="text-xs text-blue-600 mt-0.5">
@@ -108,8 +141,8 @@ export default function SubmitPage() {
           <div className="flex items-center gap-4 pt-2">
             <button
               type="submit"
-              disabled={loading || !title.trim() || !content.trim()}
-              className="flex items-center gap-2 bg-nimbus-blue text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || !title.trim() || !content.trim() || !hasGuidelines}
+              className="flex items-center gap-2 bg-brand-blue text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <><Loader2 size={16} className="animate-spin" /> Analyzing…</>
@@ -133,11 +166,11 @@ export default function SubmitPage() {
       <div className="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-amber-800 mb-2">💡 What gets checked</h3>
         <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
-          <li>Brand tone and voice alignment with Nimbus Bank guidelines</li>
-          <li>Factual accuracy and unsubstantiated claims</li>
+          <li>Brand tone and voice alignment with configured guidelines</li>
+          <li>Factual accuracy against approved facts and rates</li>
           <li>Regulatory and compliance language</li>
-          <li>Accessibility and inclusive language</li>
-          <li>Visual description consistency (if applicable)</li>
+          <li>Superlative and unsubstantiated claims</li>
+          <li>Visual standards and terminology consistency</li>
         </ul>
       </div>
     </div>

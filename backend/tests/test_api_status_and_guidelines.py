@@ -28,7 +28,7 @@ def test_db():
 
     admin = User(
         id="admin-001",
-        email="admin@nimbus.bank",
+        email="admin@brandguard.ai",
         hashed_password="pw",
         role="admin",
         full_name="Admin User",
@@ -36,7 +36,7 @@ def test_db():
     )
     creator = User(
         id="creator-001",
-        email="creator@nimbus.bank",
+        email="creator@brandguard.ai",
         hashed_password="pw",
         role="creator",
         full_name="Creator User",

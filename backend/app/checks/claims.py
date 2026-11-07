@@ -35,7 +35,8 @@ _SUPERLATIVES = [
     r"unmatched",
     r"best\s+\w+\s+experience",
     r"best\s+\w+\s+card",
-    r"best\s+\w+\s+bank",
+    r"best\s+\w+\s+rate",
+    r"best\s+\w+\s+service",
 ]
 
 _PATTERN = re.compile(
@@ -118,6 +119,11 @@ def run(content: str, context: dict) -> list[Issue]:
         review_id = context.get("review_id", "")
         facts = format_context_field(context.get("facts"), DEFAULT_APPROVED_FACTS)
         voice_guide = format_context_field(context.get("voice_guide"), DEFAULT_VOICE_GUIDE)
+
+        # When no guidelines or facts are configured, return no claim issues
+        if not voice_guide and not facts and not context.get("has_guidelines", False):
+            return []
+
         approved_docs = f"Brand Voice Guidelines:\n{voice_guide}\n\nApproved Facts:\n{facts}"
         context_version = context.get("context_version") or compute_context_version(approved_docs)
 
@@ -132,7 +138,7 @@ def run(content: str, context: dict) -> list[Issue]:
             return cached
 
         prompt = (
-            "You are a brand compliance reviewer evaluating claims in promotional content for Nimbus Bank.\n\n"
+            "You are a brand compliance reviewer evaluating claims in promotional content against brand guidelines.\n\n"
             f"Approved Guidelines & Facts:\n{approved_docs}\n\n"
             f"Content to Review:\n\"\"\"{content}\"\"\"\n\n"
             "Task:\n"

@@ -82,7 +82,7 @@ def _run_regex(content: str, review_id: str) -> list[Issue]:
 
     evidence = IssueEvidence(
         source_doc="Terminology Rules",
-        quote="Banned words: awesome, guys, gonna, wanna, lol, super, hey.",
+        quote=f"Banned words: {', '.join(unique_matches)}.",
         rule_id="TONE-001",
     )
 
@@ -92,12 +92,9 @@ def _run_regex(content: str, review_id: str) -> list[Issue]:
         category="tone",
         severity=severity,
         location=location,
-        message=f"Casual language detected: {unique_matches}. These words violate Nimbus Bank brand voice guidelines.",
+        message=f"Casual language detected: {unique_matches}. These words violate brand voice guidelines.",
         evidence=evidence,
-        suggestion=(
-            "Rewrite using professional language. Example: 'Discover our summer savings offer. "
-            "Enjoy 3.2% APY on your NimbusGrow Savings account — a rate designed to help you grow your money.'"
-        ),
+        suggestion="Rewrite using professional language aligned with brand voice guidelines.",
         status="open",
     )
     return [issue]
@@ -109,6 +106,11 @@ def run(content: str, context: dict) -> list[Issue]:
         review_id = context.get("review_id", "")
         voice_guide = format_context_field(context.get("voice_guide"), DEFAULT_VOICE_GUIDE)
         terminology = format_context_field(context.get("terminology"), DEFAULT_TERMINOLOGY)
+
+        # When no guidelines are configured, return no guideline-based issues
+        if not voice_guide and not terminology:
+            return []
+
         context_version = context.get("context_version") or compute_context_version(voice_guide, terminology)
 
         # Deterministic regex layer
@@ -171,7 +173,7 @@ def run(content: str, context: dict) -> list[Issue]:
             loc = find_quote_location(content, item.quote)
             evidence = IssueEvidence(
                 source_doc=item.source_doc or "Voice Guide",
-                quote=item.guideline_quote or "Nimbus Bank brand voice guidelines",
+                quote=item.guideline_quote or "Brand voice guidelines",
                 rule_id=item.rule_id or "TONE-001",
             )
             llm_issues.append(

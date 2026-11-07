@@ -77,7 +77,7 @@ Each check module in `backend/app/checks/` must:
 
 1. Expose exactly: `def run(content: str, context: dict) -> list[Issue]`
 2. Never crash — catch exceptions internally and return `[]` on failure
-3. Ship with a test in `backend/tests/` that proves it catches at least one planted issue from the seed data
+3. Ship with a test in `backend/tests/` that proves it catches issues from provided guidelines
 4. Work with **no LLM** (stub mode) for local dev
 
 ```python
@@ -146,11 +146,11 @@ See `README.md` for step-by-step deploy instructions.
 
 | Email | Role | Can do |
 |-------|------|--------|
-| creator@nimbus.bank | Creator | Submit content |
-| manager@nimbus.bank | Manager | Submit + review + approve |
-| reviewer@nimbus.bank | Reviewer | Review + approve |
-| admin@nimbus.bank | Admin | Manage guidelines |
+| creator@brandguard.ai | Creator | Submit content |
+| manager@brandguard.ai | Manager | Submit + review + approve |
+| reviewer@brandguard.ai | Reviewer | Review + approve |
+| admin@brandguard.ai | Admin | Manage guidelines |
 
 ---
 
-*Last updated: Phase 0 scaffold — 2026-11-05*
+*Last updated: 2026-11-07*

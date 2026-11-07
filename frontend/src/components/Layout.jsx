@@ -51,16 +51,16 @@ export default function Layout({ children }) {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Sidebar */}
-      <aside className="flex flex-col w-64 bg-nimbus-navy text-white shrink-0">
+      <aside className="flex flex-col w-64 bg-brand-navy text-white shrink-0">
         {/* Logo */}
         <div className="p-5 border-b border-blue-900">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-nimbus-blue flex items-center justify-center font-bold text-lg shrink-0">
-              NB
+            <div className="w-10 h-10 rounded-lg bg-brand-blue flex items-center justify-center font-bold text-lg shrink-0">
+              BG
             </div>
             <div>
               <div className="font-bold text-sm leading-tight">BrandGuard AI</div>
-              <div className="text-xs text-blue-300 leading-tight">Nimbus Bank</div>
+              <div className="text-xs text-blue-300 leading-tight">Brand Governance</div>
             </div>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function Layout({ children }) {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-nimbus-blue text-white'
+                    ? 'bg-brand-blue text-white'
                     : 'text-blue-200 hover:bg-blue-900 hover:text-white'
                 }`
               }
@@ -100,18 +100,16 @@ export default function Layout({ children }) {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 text-sm text-blue-300 hover:text-white transition-colors w-full"
+            className="flex items-center gap-2 text-xs text-blue-300 hover:text-white transition-colors w-full"
           >
-            <LogOut size={16} />
+            <LogOut size={14} />
             Sign out
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="min-h-full">{children}</div>
-      </main>
+      <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   )
 }

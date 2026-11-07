@@ -23,3 +23,11 @@ Only features that work end-to-end appear in the README's "Done" section.
 ---
 
 *Agents: append new issues below this line.*
+
+## Feature: AI Checks & Dynamic Guidelines (2026-11-07)
+
+| Issue | Severity | Workaround | Owner |
+|-------|----------|------------|-------|
+| Facts grounding uses full approved fact set in prompt instead of vector retrieval | P2 (design note) | Prompt includes full approved facts set for high precision across current guideline sizes (~50-100 chunks); vector retrieval can be integrated if guidelines grow beyond context window | Facts Agent |
+| In-memory LLM cache is per-process | Low | Sufficient for single-instance / development; can switch to Redis if horizontal scaling is needed | Backend Agent |
+| Accessibility and visual checks remain stubs | P1 | Return `[]` as designed for current phase | Visual Agent |

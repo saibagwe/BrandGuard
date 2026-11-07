@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.db import Review, Issue as IssueDB
 from app.models.schemas import Issue as IssueSchema
-from app.checks.orchestrator import run_all_checks
+from app.checks.orchestrator import run_all_checks, build_context_from_db
 from app.services import embedding_service, audit_service
 
 logger = logging.getLogger(__name__)
@@ -39,17 +39,8 @@ def _schema_to_db(issue: IssueSchema, review_id: str) -> IssueDB:
 def run_checks(review: Review, db: Session) -> list[IssueDB]:
     """Run all checks against *review*, persist issues, and return them."""
 
-    # Gather relevant guideline chunks for context
-    similar_chunks = embedding_service.find_similar_chunks(
-        query=review.content_text, db=db, top_k=10
-    )
-    facts_text = "\n".join(c.chunk_text for c in similar_chunks if c)
-
-    context = {
-        "review_id": review.id,
-        "facts": facts_text,
-        "review_title": review.title,
-    }
+    # Build context from stored guideline docs in db
+    context = build_context_from_db(db, review.id, review.title)
 
     # Run checks (async inside a sync context)
     try:

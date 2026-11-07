@@ -35,10 +35,21 @@ No auth required.
 
 ---
 
-## Health
+## Health & Status
 
 ### GET /health
 No auth. Returns `{"status": "ok", "version": "0.1.0"}`.
+
+### GET /api/status
+No auth. Reports database connectivity and whether LLM key is configured (contains no secrets).  
+**Response 200:**
+```json
+{
+  "status": "ok",
+  "llm_key_configured": true,
+  "db_reachable": true
+}
+```
 
 ---
 
@@ -143,6 +154,32 @@ Returns reviews in `in_review` status needing approval.
 ### GET /guidelines/{id}
 **Auth:** Any role  
 **Response 200:** GuidelineDocOut with chunk_count
+
+---
+
+### PUT /guidelines/{id}
+**Auth:** Admin  
+**Request:**
+```json
+{
+  "title": "Updated Title",
+  "doc_type": "voice" | "terminology" | "facts" | "visual",
+  "content_text": "Updated content text..."
+}
+```
+**Response 200:** GuidelineDocOut
+
+---
+
+### DELETE /guidelines/{id}
+**Auth:** Admin  
+**Response 200:**
+```json
+{
+  "status": "deleted",
+  "id": "uuid"
+}
+```
 
 ---
 

@@ -100,8 +100,44 @@ class ReviewOut(BaseModel):
 
 class GuidelineDocCreate(BaseModel):
     title: str
-    doc_type: Literal["voice", "terminology", "facts", "visual"]
+    doc_type: str
     content_text: str
+
+    def normalized_doc_type(self) -> str:
+        mapping = {
+            "brand-voice": "voice",
+            "brand_voice": "voice",
+            "voice": "voice",
+            "terminology": "terminology",
+            "approved-facts": "facts",
+            "approved_facts": "facts",
+            "facts": "facts",
+            "visual": "visual",
+        }
+        val = self.doc_type.strip().lower()
+        return mapping.get(val, val)
+
+
+class GuidelineDocUpdate(BaseModel):
+    title: Optional[str] = None
+    doc_type: Optional[str] = None
+    content_text: Optional[str] = None
+
+    def normalized_doc_type(self) -> Optional[str]:
+        if self.doc_type is None:
+            return None
+        mapping = {
+            "brand-voice": "voice",
+            "brand_voice": "voice",
+            "voice": "voice",
+            "terminology": "terminology",
+            "approved-facts": "facts",
+            "approved_facts": "facts",
+            "facts": "facts",
+            "visual": "visual",
+        }
+        val = self.doc_type.strip().lower()
+        return mapping.get(val, val)
 
 
 class GuidelineDocOut(BaseModel):

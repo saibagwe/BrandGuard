@@ -43,3 +43,27 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - Created `getErrorMessage()` in `frontend/src/api/client.js` to safely normalize FastAPI validation errors (`detail` array of `{type, loc, msg, input}`) into human-readable strings, eliminating React Minified Error #31.
 - Updated `ReviewCreate` and `ApprovalCreate` to be resilient to client field aliases (`content` vs `content_text`, `decision` vs `action`).
 - Removed the footer `© 2026 Nimbus Bank — Internal Brand Governance Tool` from `LoginPage.jsx`.
+
+---
+
+## Feature: AI Checks & Dynamic Guidelines (2026-11-07)
+
+**Upgrade: Tone, Facts, and Claims Checks Upgraded to LLM**
+- Upgraded `backend/app/checks/tone.py` to use `llm.generate_json` with brand voice guidelines and terminology rules from `context`, flagging casual tone, slang, banned words, and exclamation overuse, while keeping deterministic regex terminology as a baseline and fallback. Merges without duplicates.
+- Upgraded `backend/app/checks/facts.py` to use `llm.generate_json` against the full approved facts from `context`, extracting checkable statements and returning contradicted/outdated statements (HIGH severity, evidence quoting approved fact and source doc) and unverifiable statements (MEDIUM severity, null evidence, message indicating no approved source found).
+- Upgraded `backend/app/checks/claims.py` with keyword pre-filter ("best", "#1", "world-class", "fastest", "guaranteed", unqualified comparisons) and LLM substantiation verification against approved documents; emits HIGH severity claim issue with compliant rewrite when unsubstantiated, and leaves substantiated claims unflagged.
+- Added in-memory caching with 5-minute TTL keyed by SHA256 of `(check_name, content, context_version)` to prevent duplicate LLM calls and conserve quota.
+- Added graceful fallback to regex/stub checks on 429 quota exhaustion and unexpected errors.
+- Strict Pydantic validation on all LLM responses with 1 automatic retry on invalid schema.
+- Added code-computed exact `{start, end}` location matching with case-insensitive fallback (never trusting LLM offsets).
+
+**Enhancement: Admin Guidelines CRUD & Dynamic Review Context**
+- Extended `backend/app/api/guidelines.py` to support full Admin CRUD (POST, GET, PUT/PATCH, DELETE) with `require_role("admin")`.
+- Supports document types `voice` (`brand-voice`), `terminology`, `facts` (`approved-facts`), and `visual`.
+- Added automatic re-chunking/embedding and audit logging (`create`, `update`, `delete`) on every guideline change.
+- In `backend/app/checks/orchestrator.py`, added `build_context_from_db(db, review_id, review_title)` so reviews dynamically fetch latest guidelines from the database (falling back to seeded Nimbus Bank defaults).
+- Updated `backend/app/services/review_service.py` so the NEXT review immediately incorporates created, updated, or deleted guidelines.
+- Updated `frontend/src/pages/GuidelinesPage.jsx` with full Admin Edit (modal/inline form) and Delete (with confirmation) workflows.
+
+**API: GET /api/status Endpoint**
+- Added `/api/status` endpoint to report DB reachability and whether an LLM key is configured, exposing no secrets.

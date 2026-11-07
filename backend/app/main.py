@@ -4,12 +4,14 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, get_db
 from app.api import auth, reviews, guidelines, approvals, audit
 
 logging.basicConfig(level=logging.INFO)
@@ -56,11 +58,31 @@ app.include_router(audit.router, prefix="/api")
 
 
 # ---------------------------------------------------------------------------
-# Health check
+# Health and status checks
 # ---------------------------------------------------------------------------
 @app.get("/health", tags=["meta"])
 def health():
     return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/api/status", tags=["meta"])
+@app.get("/status", tags=["meta"])
+def status_check(db: Session = Depends(get_db)):
+    db_reachable = False
+    try:
+        db.execute(text("SELECT 1"))
+        db_reachable = True
+    except Exception as exc:
+        logger.error("DB health check failed: %s", exc)
+        db_reachable = False
+
+    llm_configured = bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip())
+
+    return {
+        "status": "ok" if db_reachable else "degraded",
+        "llm_key_configured": llm_configured,
+        "db_reachable": db_reachable,
+    }
 
 
 # ---------------------------------------------------------------------------

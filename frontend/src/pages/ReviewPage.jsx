@@ -4,6 +4,7 @@ import { api, getErrorMessage } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import IssueBadge from '../components/IssueBadge'
 import ServerWakeup from '../components/ServerWakeup'
+import { buildHighlightSegments } from '../utils/highlights'
 import {
   ChevronDown,
   ChevronUp,
@@ -15,192 +16,141 @@ import {
   Loader2,
   AlertTriangle,
   Send,
-  Eye,
-  EyeOff,
+  RefreshCw,
+  Copy,
+  Download,
+  Clock,
+  RotateCcw,
+  History,
+  FileCheck,
+  Save,
+  MessageSquare,
+  Lock,
 } from 'lucide-react'
 
-// ─── Colour tokens ────────────────────────────────────────────────────────────
+// ─── Styling definitions ──────────────────────────────────────────────────────
 
 const SEVERITY_HIGHLIGHT = {
   high:   'bg-red-200 text-red-950 border-b-2 border-red-500 cursor-pointer underline underline-offset-2 decoration-red-500 font-medium',
-  medium: 'bg-yellow-200 text-yellow-950 border-b-2 border-yellow-500 cursor-pointer underline underline-offset-2 decoration-yellow-500 font-medium',
+  medium: 'bg-amber-200 text-amber-950 border-b-2 border-amber-500 cursor-pointer underline underline-offset-2 decoration-amber-500 font-medium',
   low:    'bg-blue-100 text-blue-950 border-b-2 border-blue-400 cursor-pointer underline underline-offset-2 decoration-blue-400 font-medium',
 }
 
 const SEVERITY_ACTIVE_RING = {
   high:   'ring-2 ring-offset-1 ring-red-600 bg-red-300',
-  medium: 'ring-2 ring-offset-1 ring-yellow-600 bg-yellow-300',
+  medium: 'ring-2 ring-offset-1 ring-amber-600 bg-amber-300',
   low:    'ring-2 ring-offset-1 ring-blue-600 bg-blue-200',
 }
 
 const CATEGORY_COLORS = {
   tone:          'bg-purple-100 text-purple-700',
-  fact:          'bg-red-100    text-red-700',
+  fact:          'bg-red-100 text-red-700',
   claim:         'bg-orange-100 text-orange-700',
-  visual:        'bg-pink-100   text-pink-700',
-  accessibility: 'bg-teal-100   text-teal-700',
+  visual:        'bg-pink-100 text-pink-700',
+  accessibility: 'bg-teal-100 text-teal-700',
 }
 
-// ─── Highlight engine ─────────────────────────────────────────────────────────
+// ─── Progress Panel (while checking) ──────────────────────────────────────────
 
-/**
- * Build highlighted content from character-offset issues.
- * Handles overlaps safely by giving priority to higher-severity issues.
- * Null-location issues appear in the sidebar list only.
- */
-function buildHighlightedContent(content, issues, activeIssueId, onSpanClick) {
-  if (!content) return null
-
-  // Keep only active/open issues with valid start/end (dismissed issues hide from highlights)
-  const located = issues.filter(
-    (iss) =>
-      iss.location &&
-      iss.location.start != null &&
-      iss.location.end != null &&
-      iss.location.start < iss.location.end &&
-      iss.location.start >= 0 &&
-      iss.location.end <= content.length &&
-      iss.status !== 'dismissed'
-  )
-
-  if (located.length === 0) {
-    return (
-      <p className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed">
-        {content}
-      </p>
-    )
-  }
-
-  // Severity ordering for overlap resolution
-  const sevOrder = { high: 3, medium: 2, low: 1 }
-
-  // Build a char -> issue map (higher severity wins on overlap)
-  const charMap = new Map() // charIndex -> { issueId, severity }
-  for (const iss of located) {
-    const { start, end } = iss.location
-    for (let c = start; c < end; c++) {
-      const existing = charMap.get(c)
-      if (!existing || (sevOrder[iss.severity] || 0) > (sevOrder[existing.severity] || 0)) {
-        charMap.set(c, { issueId: iss.id, severity: iss.severity })
-      }
-    }
-  }
-
-  // Build run-length encoded segments
-  const segments = []
-  let i = 0
-  while (i < content.length) {
-    const cell = charMap.get(i)
-    if (!cell) {
-      let j = i + 1
-      while (j < content.length && !charMap.get(j)) j++
-      segments.push({ text: content.slice(i, j), issueId: null, severity: null })
-      i = j
-    } else {
-      let j = i + 1
-      while (j < content.length) {
-        const next = charMap.get(j)
-        if (!next || next.issueId !== cell.issueId) break
-        j++
-      }
-      segments.push({ text: content.slice(i, j), issueId: cell.issueId, severity: cell.severity })
-      i = j
-    }
-  }
-
-  const issueById = Object.fromEntries(issues.map((iss) => [iss.id, iss]))
-
-  return (
-    <p className="whitespace-pre-wrap text-gray-800 text-sm leading-relaxed">
-      {segments.map((seg, idx) => {
-        if (!seg.issueId) return <span key={idx}>{seg.text}</span>
-        const isActive = seg.issueId === activeIssueId
-        const sev = seg.severity?.toLowerCase() || 'low'
-        return (
-          <mark
-            key={idx}
-            data-issue-id={seg.issueId}
-            onClick={() => onSpanClick(seg.issueId)}
-            className={`rounded px-1 py-0.5 inline-block ${SEVERITY_HIGHLIGHT[sev] || SEVERITY_HIGHLIGHT.low} ${
-              isActive ? SEVERITY_ACTIVE_RING[sev] || SEVERITY_ACTIVE_RING.low : ''
-            }`}
-            title={`${sev.toUpperCase()}: ${issueById[seg.issueId]?.message || ''}`}
-          >
-            {seg.text}
-            {/* Accessible non-colour-only label */}
-            <span className="inline-block text-[10px] font-bold uppercase tracking-wider px-1 py-0.2 mx-1 rounded bg-white/80 border border-current align-baseline select-none">
-              {sev}
-            </span>
-          </mark>
-        )
-      })}
-    </p>
-  )
-}
-
-// ─── Summary bar ─────────────────────────────────────────────────────────────
-
-function SummaryBar({ issues, activeFilters, onFilterToggle }) {
-  const open = issues.filter((i) => i.status === 'open')
-  const counts = {
-    high:   open.filter((i) => i.severity === 'high').length,
-    medium: open.filter((i) => i.severity === 'medium').length,
-    low:    open.filter((i) => i.severity === 'low').length,
-  }
-  const catCounts = {}
-  for (const iss of open) {
-    catCounts[iss.category] = (catCounts[iss.category] || 0) + 1
-  }
-
-  const chips = [
-    { key: 'high',   label: `${counts.high} High`,   cls: 'bg-red-100 text-red-700 border-red-300'    },
-    { key: 'medium', label: `${counts.medium} Med`,  cls: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-    { key: 'low',    label: `${counts.low} Low`,     cls: 'bg-blue-100 text-blue-700 border-blue-300'   },
-    ...Object.entries(catCounts).map(([cat, n]) => ({
-      key: `cat:${cat}`,
-      label: `${n} ${cat}`,
-      cls: 'bg-gray-100 text-gray-700 border-gray-300',
-    })),
+function ProgressPanel({ progress, elapsedSeconds, onRetry }) {
+  const checks = [
+    { key: 'tone', label: 'Brand Voice & Tone' },
+    { key: 'facts', label: 'Approved Facts Verification' },
+    { key: 'claims', label: 'Superlative & Comparative Claims' },
+    { key: 'accessibility', label: 'Inclusive & Accessible Language' },
+    { key: 'visual', label: 'Visual & Layout Standards' },
   ]
 
+  const isTimedOut = elapsedSeconds >= 90
+
   return (
-    <div className="flex flex-wrap gap-2 items-center">
-      {chips.map((c) => (
-        <button
-          key={c.key}
-          onClick={() => onFilterToggle(c.key)}
-          className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-all ${c.cls} ${
-            activeFilters.includes(c.key)
-              ? 'ring-2 ring-offset-1 ring-nimbus-blue opacity-100 font-bold'
-              : 'opacity-70 hover:opacity-100'
-          }`}
-        >
-          {c.label}
-        </button>
-      ))}
+    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Loader2 className="animate-spin text-nimbus-blue" size={20} />
+          <h3 className="text-sm font-bold text-indigo-950">AI Brand Analysis in Progress…</h3>
+        </div>
+        <span className="text-xs font-mono text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded">
+          {elapsedSeconds}s
+        </span>
+      </div>
+
+      <div className="space-y-2 mt-3">
+        {checks.map(({ key, label }) => {
+          const state = progress?.[key] || 'pending'
+          return (
+            <div
+              key={key}
+              className="flex items-center justify-between text-xs bg-white/70 px-3 py-2 rounded-lg border border-indigo-100"
+            >
+              <span className="font-medium text-gray-700">{label}</span>
+              <div className="flex items-center gap-1.5">
+                {state === 'pending' && <span className="text-gray-400">Waiting…</span>}
+                {state === 'running' && (
+                  <span className="text-indigo-600 font-semibold flex items-center gap-1">
+                    <Loader2 size={12} className="animate-spin" /> Running
+                  </span>
+                )}
+                {state === 'done' && (
+                  <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                    <Check size={13} /> Done
+                  </span>
+                )}
+                {state === 'failed' && (
+                  <span className="text-amber-600 text-[11px] font-medium bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                    this check could not run
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {isTimedOut && (
+        <div className="mt-4 pt-3 border-t border-indigo-200 flex items-center justify-between">
+          <p className="text-xs text-indigo-900">
+            Checks are taking longer than normal (over 90 seconds).
+          </p>
+          <button
+            onClick={onRetry}
+            className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm"
+          >
+            <RefreshCw size={12} /> Retry Checks
+          </button>
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── Issue card ───────────────────────────────────────────────────────────────
+// ─── Issue Card Component ─────────────────────────────────────────────────────
 
-function IssueCard({ issue, onAction, isActive, onClick, registerRef }) {
+function IssueCard({
+  issue,
+  content,
+  onAccept,
+  onDismiss,
+  onReopen,
+  isActive,
+  onClick,
+  registerRef,
+  isLocked,
+}) {
   const [evidenceOpen, setEvidenceOpen] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editText, setEditText] = useState(issue.suggestion || '')
+  const [dismissReasonOpen, setDismissReasonOpen] = useState(false)
+  const [dismissReason, setDismissReason] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
-  const [localStatus, setLocalStatus] = useState(issue.status || 'open')
   const cardRef = useRef(null)
 
-  // Register card DOM node with parent for scroll targeting
   useEffect(() => {
     if (registerRef) registerRef(cardRef.current)
-    return () => { if (registerRef) registerRef(null) }
+    return () => {
+      if (registerRef) registerRef(null)
+    }
   }, [registerRef])
-
-  useEffect(() => {
-    setLocalStatus(issue.status || 'open')
-  }, [issue.status])
 
   useEffect(() => {
     if (isActive && cardRef.current) {
@@ -208,25 +158,51 @@ function IssueCard({ issue, onAction, isActive, onClick, registerRef }) {
     }
   }, [isActive])
 
-  const handleAction = async (action, customSuggestion) => {
-    setActionLoading(action)
+  const handleAccept = async (replacement) => {
+    setActionLoading('accept')
     try {
-      const payload = { status: action }
-      if (action === 'edited' && customSuggestion != null) {
-        payload.edited_suggestion = customSuggestion
-      }
-      await onAction(issue.id, action, payload)
-      setLocalStatus(action)
+      await onAccept(issue.id, replacement)
       setEditMode(false)
-    } catch (err) {
-      alert(getErrorMessage(err, 'Action failed.'))
     } finally {
       setActionLoading(null)
     }
   }
 
-  const isDone = localStatus !== 'open'
+  const handleDismiss = async () => {
+    setActionLoading('dismiss')
+    try {
+      await onDismiss(issue.id, dismissReason)
+      setDismissReasonOpen(false)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleReopen = async () => {
+    setActionLoading('reopen')
+    try {
+      await onReopen(issue.id)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Determine original quote
+  let originalQuote = ''
+  if (
+    issue.location &&
+    issue.location.start != null &&
+    issue.location.end != null &&
+    content &&
+    issue.location.start >= 0 &&
+    issue.location.end <= content.length
+  ) {
+    originalQuote = content.slice(issue.location.start, issue.location.end)
+  }
+
   const ev = issue.evidence
+  const isDismissed = issue.status === 'dismissed'
+  const isAccepted = issue.status === 'accepted' || issue.status === 'edited'
 
   return (
     <div
@@ -235,63 +211,83 @@ function IssueCard({ issue, onAction, isActive, onClick, registerRef }) {
       onClick={onClick}
       className={`rounded-xl border p-4 mb-3 cursor-pointer transition-all outline-none ${
         isActive
-          ? 'border-nimbus-blue shadow-lg bg-blue-50/80 ring-2 ring-nimbus-blue'
+          ? 'border-nimbus-blue shadow-md bg-blue-50/70 ring-2 ring-nimbus-blue'
           : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
-      } ${isDone ? 'opacity-60' : ''}`}
+      } ${isDismissed || isAccepted ? 'opacity-70 bg-gray-50/80' : ''}`}
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="flex items-start justify-between gap-2 mb-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <IssueBadge severity={issue.severity} />
           <span
-            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-              CATEGORY_COLORS[issue.category] || 'bg-gray-100 text-gray-600'
+            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              CATEGORY_COLORS[issue.category] || 'bg-gray-100 text-gray-700'
             }`}
           >
             {issue.category}
           </span>
-          {isDone && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 capitalize">
-              {localStatus}
+          {issue.status !== 'open' && (
+            <span
+              className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${
+                issue.status === 'dismissed'
+                  ? 'bg-gray-200 text-gray-700'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {issue.status}
             </span>
           )}
           {!issue.location && (
-            <span className="text-xs text-gray-400 italic bg-gray-100 px-2 py-0.5 rounded">
-              list-only (no location)
+            <span className="text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded italic">
+              list-only
             </span>
           )}
         </div>
       </div>
 
       {/* Message */}
-      <p className="text-sm text-gray-800 mb-3 leading-relaxed">{issue.message}</p>
+      <p className="text-sm text-gray-800 mb-3 leading-relaxed font-normal">{issue.message}</p>
 
-      {/* Suggestion */}
+      {/* Suggested Fix: old text -> new text */}
       {issue.suggestion && !editMode && (
-        <div className="mb-3 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-          <p className="text-xs font-semibold text-green-700 mb-0.5">💡 Suggested Fix</p>
-          <p className="text-xs text-green-800 leading-relaxed">{issue.suggestion}</p>
+        <div className="mb-3 bg-emerald-50/70 border border-emerald-200 rounded-lg p-3">
+          <p className="text-xs font-semibold text-emerald-900 mb-1.5 flex items-center gap-1">
+            💡 Suggested Fix
+          </p>
+          <div className="text-xs flex items-center gap-2 flex-wrap">
+            {originalQuote && (
+              <span className="line-through text-red-700 bg-red-100/80 px-2 py-0.5 rounded font-mono">
+                {originalQuote}
+              </span>
+            )}
+            {originalQuote && <span className="text-gray-400 font-bold">→</span>}
+            <span className="text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded font-medium">
+              {issue.suggestion}
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Edit box */}
+      {/* Inline Edit Replacement Field */}
       {editMode && (
-        <div className="mb-3" onClick={(e) => e.stopPropagation()}>
-          <label className="text-xs font-semibold text-blue-700 mb-1 block">Edit Replacement Text</label>
+        <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3" onClick={(e) => e.stopPropagation()}>
+          <label className="text-xs font-semibold text-blue-900 mb-1 block">
+            Custom Replacement Text
+          </label>
           <textarea
-            className="w-full text-xs border border-blue-300 rounded-lg px-2.5 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-nimbus-blue bg-white"
-            rows={3}
+            rows={2}
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
+            className="w-full text-xs border border-blue-300 rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
           />
           <div className="flex gap-2 mt-2">
             <button
-              onClick={() => handleAction('edited', editText)}
-              disabled={!!actionLoading}
-              className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              onClick={() => handleAccept(editText)}
+              disabled={actionLoading === 'accept'}
+              className="text-xs font-semibold px-3 py-1 rounded bg-nimbus-blue text-white hover:bg-blue-700 flex items-center gap-1"
             >
-              {actionLoading === 'edited' ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-              Apply Edit & Replace
+              {actionLoading === 'accept' ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              Apply & Replace
             </button>
             <button
               onClick={() => setEditMode(false)}
@@ -303,67 +299,131 @@ function IssueCard({ issue, onAction, isActive, onClick, registerRef }) {
         </div>
       )}
 
-      {/* Evidence collapsible */}
-      {ev && (
-        <div className="mb-3">
-          <button
-            onClick={(e) => { e.stopPropagation(); setEvidenceOpen((p) => !p) }}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
-          >
-            {evidenceOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            {evidenceOpen ? 'Hide' : 'Show'} evidence
-          </button>
-          {evidenceOpen && (
-            <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 space-y-1">
-              {ev.source_doc && (
-                <p className="font-semibold text-gray-700">📄 {ev.source_doc}</p>
-              )}
-              {ev.quote && <p className="italic bg-white p-2 rounded border border-gray-100">&ldquo;{ev.quote}&rdquo;</p>}
-              {ev.rule_id && <p className="text-gray-400 font-mono text-[11px]">Rule: {ev.rule_id}</p>}
-            </div>
-          )}
+      {/* Dismiss Reason Form */}
+      {dismissReasonOpen && (
+        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-3" onClick={(e) => e.stopPropagation()}>
+          <label className="text-xs font-semibold text-amber-900 mb-1 block">
+            Reason for dismissal (optional)
+          </label>
+          <input
+            type="text"
+            value={dismissReason}
+            onChange={(e) => setDismissReason(e.target.value)}
+            placeholder="e.g. Approved exception by compliance, intentional style"
+            className="w-full text-xs border border-amber-300 rounded p-1.5 focus:outline-none bg-white mb-2"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleDismiss}
+              disabled={actionLoading === 'dismiss'}
+              className="text-xs font-semibold px-3 py-1 rounded bg-amber-700 text-white hover:bg-amber-800 flex items-center gap-1"
+            >
+              {actionLoading === 'dismiss' ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+              Confirm Dismissal
+            </button>
+            <button
+              onClick={() => setDismissReasonOpen(false)}
+              className="text-xs text-gray-500 hover:text-gray-700 px-2"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Actions */}
-      {!isDone && !editMode && (
-        <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => handleAction('accepted')}
-            disabled={!!actionLoading}
-            className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
-            title="Accept suggestion and replace text"
-          >
-            {actionLoading === 'accepted' ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-            Accept
-          </button>
-          {issue.suggestion && (
+      {/* Evidence Collapsible */}
+      <div className="mb-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setEvidenceOpen((p) => !p)
+          }}
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 font-medium"
+        >
+          {evidenceOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {evidenceOpen ? 'Hide' : 'Show'} guideline evidence
+        </button>
+
+        {evidenceOpen && (
+          <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-xs text-gray-600 space-y-1">
+            {ev?.source_doc ? (
+              <p className="font-semibold text-gray-800">📄 Source: {ev.source_doc}</p>
+            ) : (
+              <p className="text-amber-700 font-medium italic">No approved source found</p>
+            )}
+            {ev?.quote ? (
+              <blockquote className="italic border-l-2 border-gray-300 pl-2 text-gray-700">
+                &ldquo;{ev.quote}&rdquo;
+              </blockquote>
+            ) : (
+              <p className="text-gray-400 italic">No quoted rule available.</p>
+            )}
+            {ev?.rule_id && (
+              <p className="text-gray-400 font-mono text-[11px]">Rule ID: {ev.rule_id}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      {!isLocked && (
+        <div className="flex gap-2 pt-2 border-t border-gray-100 flex-wrap" onClick={(e) => e.stopPropagation()}>
+          {issue.status === 'open' && (
+            <>
+              {issue.location && (
+                <button
+                  onClick={() => handleAccept(issue.suggestion)}
+                  disabled={actionLoading === 'accept'}
+                  className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors"
+                  title="Accept suggestion and replace text"
+                >
+                  {actionLoading === 'accept' ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                  Accept
+                </button>
+              )}
+              {issue.location && (
+                <button
+                  onClick={() => {
+                    setEditText(issue.suggestion || originalQuote || '')
+                    setEditMode(true)
+                  }}
+                  className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                  title="Customize replacement text"
+                >
+                  <Edit3 size={12} />
+                  Edit
+                </button>
+              )}
+              <button
+                onClick={() => setDismissReasonOpen(true)}
+                disabled={actionLoading === 'dismiss'}
+                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                title="Dismiss this issue"
+              >
+                <X size={12} />
+                Dismiss
+              </button>
+            </>
+          )}
+
+          {isDismissed && (
             <button
-              onClick={() => { setEditText(issue.suggestion || ''); setEditMode(true) }}
-              disabled={!!actionLoading}
-              className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors disabled:opacity-50"
-              title="Edit suggestion before applying"
+              onClick={handleReopen}
+              disabled={actionLoading === 'reopen'}
+              className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-50 text-nimbus-blue hover:bg-blue-100 transition-colors"
+              title="Reopen dismissed issue"
             >
-              <Edit3 size={12} />
-              Edit
+              {actionLoading === 'reopen' ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+              Reopen Issue
             </button>
           )}
-          <button
-            onClick={() => handleAction('dismissed')}
-            disabled={!!actionLoading}
-            className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
-            title="Dismiss issue"
-          >
-            {actionLoading === 'dismissed' ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
-            Dismiss
-          </button>
         </div>
       )}
     </div>
   )
 }
 
-// ─── Main ReviewPage ──────────────────────────────────────────────────────────
+// ─── Main ReviewPage Workspace ────────────────────────────────────────────────
 
 export default function ReviewPage() {
   const { id } = useParams()
@@ -374,106 +434,199 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true)
   const [wakeup, setWakeup] = useState(false)
   const [error, setError] = useState('')
-  const [activeIssueId, setActiveIssueId] = useState(null)
-  const [decisionLoading, setDecisionLoading] = useState(null)
-  const [decisionDone, setDecisionDone] = useState('')
-  const [activeFilters, setActiveFilters] = useState([])
-  const [submitConfirm, setSubmitConfirm] = useState(false)
-  const [submitWarningConfirm, setSubmitWarningConfirm] = useState(false)
-  const [submitLoading, setSubmitLoading] = useState(false)
-  const [showDismissed, setShowDismissed] = useState(false)
 
-  // Map issueId -> card DOM node for scrolling from span -> card
+  // Workspace modes
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editTextContent, setEditTextContent] = useState('')
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [activeIssueId, setActiveIssueId] = useState(null)
+
+  // Filters
+  const [activeSeverityFilter, setActiveSeverityFilter] = useState(null)
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState(null)
+  const [statusFilter, setStatusFilter] = useState('open') // 'open' | 'accepted' | 'dismissed' | 'all'
+
+  // Submission & Confirmation modal states
+  const [submitLoading, setSubmitLoading] = useState(false)
+  const [highConfirmOpen, setHighConfirmOpen] = useState(false)
+  const [recheckLoading, setRecheckLoading] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [copySuccess, setCopySuccess] = useState(false)
+
+  // Elapsed polling timer for background checks
+  const [checkingElapsed, setCheckingElapsed] = useState(0)
+
   const cardRefs = useRef({})
 
+  // Fetch Review Data
   const fetchReview = useCallback(async () => {
-    setLoading(true)
-    const wakeupTimer = setTimeout(() => setWakeup(true), 5000)
     try {
       const endpoint = id === 'sample' ? '/reviews/sample' : `/reviews/${id}`
       const res = await api.get(endpoint)
       setReview(res.data)
+      setEditTextContent(res.data.content_text || '')
     } catch (err) {
       if (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED') {
         setWakeup(true)
       } else {
-        setError(getErrorMessage(err, 'Could not load review.'))
+        setError(getErrorMessage(err, 'Failed to load review.'))
       }
     } finally {
-      clearTimeout(wakeupTimer)
       setLoading(false)
       setWakeup(false)
     }
   }, [id])
 
-  useEffect(() => { fetchReview() }, [fetchReview])
+  useEffect(() => {
+    fetchReview()
+  }, [fetchReview])
 
-  const handleIssueAction = async (issueId, action, payload) => {
-    const reviewId = id === 'sample' ? (review?.id || 'sample') : id
-    await api.patch(`/reviews/${reviewId}/issues/${issueId}`, payload)
+  // Polling while status === 'checking'
+  useEffect(() => {
+    if (!review || review.status !== 'checking') {
+      setCheckingElapsed(0)
+      return
+    }
 
-    // Apply text replacement and shift later issues' offsets locally
-    setReview((prev) => {
-      if (!prev) return prev
+    const interval = setInterval(() => {
+      setCheckingElapsed((prev) => prev + 2)
+      fetchReview()
+    }, 2000)
 
-      const target = prev.issues.find((iss) => iss.id === issueId)
-      const replacement = action === 'edited' ? (payload.edited_suggestion ?? target?.suggestion) : target?.suggestion
+    return () => clearInterval(interval)
+  }, [review?.status, fetchReview])
 
-      let newContentText = prev.content_text
-      let updatedIssues = prev.issues
+  // ── Action Handlers ──
 
-      if ((action === 'accepted' || action === 'edited') && target?.location && target.location.start != null && target.location.end != null && replacement != null) {
-        const { start, end } = target.location
-        newContentText = prev.content_text.slice(0, start) + replacement + prev.content_text.slice(end)
-        const delta = replacement.length - (end - start)
-
-        updatedIssues = prev.issues.map((iss) => {
-          if (iss.id === issueId) {
-            return {
-              ...iss,
-              status: action,
-              suggestion: replacement,
-              location: { ...iss.location, start, end: start + replacement.length },
-            }
-          }
-          if (!iss.location || iss.location.start == null || iss.location.end == null) {
-            return iss
-          }
-          if (iss.location.start >= end) {
-            return {
-              ...iss,
-              location: {
-                ...iss.location,
-                start: iss.location.start + delta,
-                end: iss.location.end + delta,
-              },
-            }
-          }
-          return iss
-        })
-      } else {
-        updatedIssues = prev.issues.map((iss) =>
-          iss.id === issueId
-            ? {
-                ...iss,
-                status: action,
-                suggestion: payload.edited_suggestion ?? iss.suggestion,
-              }
-            : iss
-        )
-      }
-
-      return {
-        ...prev,
-        content_text: newContentText,
-        issues: updatedIssues,
-      }
-    })
+  const handleRecheck = async () => {
+    setRecheckLoading(true)
+    setError('')
+    try {
+      const res = await api.post(`/reviews/${review.id}/recheck`)
+      setReview(res.data)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Could not start re-check.'))
+    } finally {
+      setRecheckLoading(false)
+    }
   }
 
-  // Clicking a span in content scrolls to & highlights its card
+  const handleSaveTextContent = async () => {
+    if (!editTextContent.trim()) {
+      alert('Content cannot be empty.')
+      return
+    }
+    setSaveLoading(true)
+    setError('')
+    try {
+      // 1. Save new content
+      await api.put(`/reviews/${review.id}/content`, { text: editTextContent.trim() })
+      // 2. Automatically trigger a re-check
+      const res = await api.post(`/reviews/${review.id}/recheck`)
+      setReview(res.data)
+      setIsEditMode(false)
+    } catch (err) {
+      alert(getErrorMessage(err, 'Failed to update content.'))
+    } finally {
+      setSaveLoading(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    if (editTextContent !== review.content_text) {
+      const confirmed = window.confirm('You have unsaved changes. Discard changes?')
+      if (!confirmed) return
+    }
+    setEditTextContent(review.content_text || '')
+    setIsEditMode(false)
+  }
+
+  const handleAcceptIssue = async (issueId, customReplacement) => {
+    setError('')
+    try {
+      const payload = customReplacement != null ? { replacement: customReplacement } : {}
+      const res = await api.post(`/reviews/${review.id}/issues/${issueId}/accept`, payload)
+      setReview(res.data)
+      setEditTextContent(res.data.content_text || '')
+    } catch (err) {
+      alert(getErrorMessage(err, 'Could not accept fix.'))
+    }
+  }
+
+  const handleDismissIssue = async (issueId, reason) => {
+    setError('')
+    try {
+      const res = await api.post(`/reviews/${review.id}/issues/${issueId}/dismiss`, {
+        reason: reason || undefined,
+      })
+      setReview(res.data)
+    } catch (err) {
+      alert(getErrorMessage(err, 'Could not dismiss issue.'))
+    }
+  }
+
+  const handleReopenIssue = async (issueId) => {
+    setError('')
+    try {
+      const res = await api.post(`/reviews/${review.id}/issues/${issueId}/reopen`)
+      setReview(res.data)
+    } catch (err) {
+      alert(getErrorMessage(err, 'Could not reopen issue.'))
+    }
+  }
+
+  const handleSubmitForApproval = async (confirmHigh = false) => {
+    setSubmitLoading(true)
+    setError('')
+    try {
+      const res = await api.post(`/reviews/${review.id}/submit`, {
+        confirm_high: confirmHigh,
+      })
+      setReview(res.data)
+      setHighConfirmOpen(false)
+    } catch (err) {
+      if (err.response?.status === 409) {
+        const code = err.response.data?.code
+        if (code === 'stale') {
+          // Stale: prompt to re-check
+          const doRecheck = window.confirm(
+            'The content has been modified since the last check. Would you like to run a re-check now?'
+          )
+          if (doRecheck) {
+            await handleRecheck()
+          }
+        } else if (code === 'high_open') {
+          // Open high severity issues confirmation
+          setHighConfirmOpen(true)
+        } else {
+          alert(getErrorMessage(err, 'Submission conflict.'))
+        }
+      } else {
+        alert(getErrorMessage(err, 'Could not submit review for approval.'))
+      }
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
+  const handleCopyText = async () => {
+    if (!review?.content_text) return
+    try {
+      await navigator.clipboard.writeText(review.content_text)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch {
+      alert('Could not copy text to clipboard.')
+    }
+  }
+
+  const handleExport = (format) => {
+    window.open(`/api/reviews/${review.id}/export?format=${format}`, '_blank')
+  }
+
+  // ── Highlight click / Linking handlers ──
   const handleSpanClick = (issueId) => {
-    setActiveIssueId(issueId === activeIssueId ? null : issueId)
+    setActiveIssueId((prev) => (prev === issueId ? null : issueId))
     const cardEl = cardRefs.current[issueId]
     if (cardEl) {
       cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -481,313 +634,576 @@ export default function ReviewPage() {
     }
   }
 
-  // Clicking an issue card highlights and scrolls to its text span
   const handleCardClick = (issueId) => {
-    const newActive = issueId === activeIssueId ? null : issueId
-    setActiveIssueId(newActive)
-    if (newActive) {
-      const spanEl = document.querySelector(`mark[data-issue-id="${newActive}"]`)
+    const nextId = issueId === activeIssueId ? null : issueId
+    setActiveIssueId(nextId)
+    if (nextId) {
+      const spanEl = document.querySelector(`mark[data-issue-id="${nextId}"]`)
       if (spanEl) {
         spanEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
     }
   }
 
-  const handleDecision = async (decision) => {
-    setDecisionLoading(decision)
-    try {
-      await api.post(`/reviews/${id}/approve`, { action: decision, comment: `Reviewer selected ${decision}` })
-      setDecisionDone(decision)
-      await fetchReview()
-    } catch (err) {
-      alert(getErrorMessage(err, 'Action failed.'))
-    } finally {
-      setDecisionLoading(null)
-    }
-  }
-
-  const handleSubmitForApproval = async () => {
-    setSubmitLoading(true)
-    try {
-      await api.post(`/reviews/${id}/approve`, {
-        action: 'approved',
-        comment: 'Submitted for approval from review screen.',
-      })
-      setDecisionDone('approved')
-      await fetchReview()
-    } catch (err) {
-      alert(getErrorMessage(err, 'Could not submit for approval.'))
-    } finally {
-      setSubmitLoading(false)
-      setSubmitConfirm(false)
-      setSubmitWarningConfirm(false)
-    }
-  }
-
-  const toggleFilter = (key) => {
-    setActiveFilters((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    )
-  }
-
-  // ── Loading / error states ──
+  // ── Loading & Error states ──
   if (loading || wakeup) {
     return (
-      <div className="p-6">
+      <div className="p-8">
         {wakeup ? (
           <ServerWakeup />
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="animate-spin text-nimbus-blue" size={36} />
-            <p className="text-gray-500 text-sm font-medium">Loading review…</p>
+            <p className="text-gray-500 text-sm font-medium">Loading review workspace…</p>
           </div>
         )}
       </div>
     )
   }
 
-  if (error) {
+  if (error || !review) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center max-w-lg mx-auto">
-          <AlertCircle className="mx-auto text-red-400 mb-3" size={32} />
-          <p className="text-red-700 font-medium">{error}</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-sm text-nimbus-blue hover:underline">
-            ← Go back
-          </button>
-        </div>
+      <div className="p-8 max-w-lg mx-auto text-center">
+        <AlertCircle size={36} className="text-red-500 mx-auto mb-3" />
+        <h2 className="text-lg font-bold text-gray-800">Error Loading Review</h2>
+        <p className="text-sm text-red-600 mt-1">{error || 'Review could not be found.'}</p>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="mt-4 text-sm text-nimbus-blue hover:underline font-medium"
+        >
+          ← Return to Dashboard
+        </button>
       </div>
     )
   }
 
-  if (!review) return null
-
+  // State flags
+  const isChecking = review.status === 'checking'
+  const isLocked = ['in_review', 'approved'].includes(review.status)
+  const isApproved = review.status === 'approved'
+  const isChangesRequested = review.status === 'changes_requested'
+  const isStale = review.is_stale || (review.checked_version !== review.content_version)
   const allIssues = review.issues || []
-  const canDecide = ['manager', 'reviewer'].includes(user?.role) && review.status === 'in_review'
 
-  // Apply filters and dismissed toggle
-  const visibleIssues = allIssues.filter((iss) => {
-    if (iss.status === 'dismissed' && !showDismissed) return false
-    if (activeFilters.length === 0) return true
-    const sevMatch = activeFilters.includes(iss.severity)
-    const catMatch = activeFilters.some((f) => f === `cat:${iss.category}`)
-    const hasSev = activeFilters.some((f) => ['high', 'medium', 'low'].includes(f))
-    const hasCat = activeFilters.some((f) => f.startsWith('cat:'))
-    if (hasSev && hasCat) return sevMatch || catMatch
-    if (hasSev) return sevMatch
-    if (hasCat) return catMatch
+  // Filter issues
+  const filteredIssues = allIssues.filter((iss) => {
+    // Status filter
+    if (statusFilter === 'open' && iss.status !== 'open') return false
+    if (statusFilter === 'accepted' && !['accepted', 'edited'].includes(iss.status)) return false
+    if (statusFilter === 'dismissed' && iss.status !== 'dismissed') return false
+
+    // Severity filter
+    if (activeSeverityFilter && iss.severity !== activeSeverityFilter) return false
+
+    // Category filter
+    if (activeCategoryFilter && iss.category !== activeCategoryFilter) return false
+
     return true
   })
 
-  const dismissedCount = allIssues.filter((i) => i.status === 'dismissed').length
-  const openHighCount = allIssues.filter((i) => i.severity === 'high' && i.status === 'open').length
+  // Open High Issues (for confirmation modal)
+  const openHighIssues = allIssues.filter((i) => i.severity === 'high' && i.status === 'open')
+
+  // Highlights generator
+  const highlightSegments = buildHighlightSegments(review.content_text, allIssues)
 
   return (
-    <div className="flex flex-col h-full">
-      {/* ── Top bar ── */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between gap-4 shrink-0 flex-wrap">
+    <div className="flex flex-col h-full bg-gray-50">
+      {/* ── TOP HEADER BAR ── */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 shadow-sm">
         <div className="min-w-0">
-          <h1 className="text-lg font-bold text-gray-800 truncate max-w-lg">{review.title}</h1>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="text-xs text-gray-500 capitalize">
-              {review.status?.replace(/_/g, ' ')} ·{' '}
-              {review.created_at ? new Date(review.created_at).toLocaleDateString() : ''}
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gray-900 truncate">{review.title}</h1>
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                review.status === 'approved'
+                  ? 'bg-green-100 text-green-800 border border-green-300'
+                  : review.status === 'in_review'
+                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                  : review.status === 'changes_requested'
+                  ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                  : review.status === 'checking'
+                  ? 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+              }`}
+            >
+              {review.status?.replace('_', ' ')}
             </span>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 uppercase">
-              {review.content_type}
-            </span>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-              {allIssues.length} issue{allIssues.length !== 1 ? 's' : ''}
-            </span>
+          </div>
+
+          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 flex-wrap">
+            <span>Format: {review.source_type?.toUpperCase() || 'TEXT'}</span>
+            <span>·</span>
+            <span>Version {review.content_version}</span>
+            <span>·</span>
+            <span>Last checked: {review.checked_version ? `v${review.checked_version}` : 'Never'}</span>
+            {review.original_filename && (
+              <>
+                <span>·</span>
+                <span className="truncate max-w-xs">File: {review.original_filename}</span>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="flex gap-2 shrink-0 flex-wrap items-center">
-          {canDecide && !decisionDone && (
-            <>
-              <button
-                onClick={() => handleDecision('approved')}
-                disabled={!!decisionLoading}
-                className="flex items-center gap-1.5 bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-              >
-                {decisionLoading === 'approved' ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                Approve
-              </button>
-              <button
-                onClick={() => handleDecision('changes_requested')}
-                disabled={!!decisionLoading}
-                className="flex items-center gap-1.5 bg-orange-500 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
-              >
-                {decisionLoading === 'changes_requested' ? <Loader2 size={14} className="animate-spin" /> : <AlertCircle size={14} />}
-                Request Changes
-              </button>
-            </>
+        {/* Top actions */}
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          {/* History Button */}
+          <button
+            onClick={() => setShowHistory((p) => !p)}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+            title="View approval and review history"
+          >
+            <History size={14} />
+            History
+          </button>
+
+          {/* Re-check Button */}
+          {!isLocked && (
+            <button
+              onClick={handleRecheck}
+              disabled={isChecking || recheckLoading}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={isChecking || recheckLoading ? 'animate-spin' : ''} />
+              Re-check
+            </button>
           )}
 
-          {!canDecide && review.status === 'in_review' && !decisionDone && (
-            openHighCount === 0 ? (
-              !submitConfirm ? (
-                <button
-                  onClick={() => setSubmitConfirm(true)}
-                  className="flex items-center gap-1.5 bg-nimbus-blue text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Send size={14} />
-                  Submit for Approval
-                </button>
+          {/* Submit for Approval Button */}
+          {!isLocked && (
+            <button
+              onClick={() => handleSubmitForApproval(false)}
+              disabled={isChecking || submitLoading}
+              className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-nimbus-blue hover:bg-blue-700 text-white shadow-sm transition-colors disabled:opacity-50"
+            >
+              {submitLoading ? (
+                <Loader2 size={14} className="animate-spin" />
               ) : (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
-                  <span className="text-xs text-green-700 font-medium">Ready to submit?</span>
-                  <button
-                    onClick={handleSubmitForApproval}
-                    disabled={submitLoading}
-                    className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-lg disabled:opacity-50"
-                  >
-                    {submitLoading ? <Loader2 size={12} className="animate-spin inline" /> : 'Yes, submit'}
-                  </button>
-                  <button onClick={() => setSubmitConfirm(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-                </div>
-              )
-            ) : (
-              !submitWarningConfirm ? (
-                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
-                  <AlertTriangle size={14} className="text-amber-600 shrink-0" />
-                  <span className="text-xs text-amber-800 font-medium">
-                    {openHighCount} HIGH issue{openHighCount !== 1 ? 's' : ''} open
-                  </span>
-                  <button
-                    onClick={() => setSubmitWarningConfirm(true)}
-                    className="text-xs text-amber-700 font-semibold underline hover:text-amber-900 ml-1"
-                  >
-                    Submit anyway…
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
-                  <span className="text-xs text-red-700 font-medium">
-                    Confirm submit with {openHighCount} HIGH issue{openHighCount !== 1 ? 's' : ''}?
-                  </span>
-                  <button
-                    onClick={handleSubmitForApproval}
-                    disabled={submitLoading}
-                    className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg disabled:opacity-50"
-                  >
-                    {submitLoading ? <Loader2 size={12} className="animate-spin inline" /> : 'Confirm submit'}
-                  </button>
-                  <button onClick={() => setSubmitWarningConfirm(false)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-                </div>
-              )
-            )
+                <Send size={14} />
+              )}
+              {isChangesRequested ? 'Resubmit for Approval' : 'Send for Approval'}
+            </button>
           )}
 
-          {decisionDone && (
-            <div className="flex items-center gap-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 px-4 py-2 rounded-lg">
-              <CheckCircle size={16} />
-              {decisionDone === 'approved' ? 'Approved!' : 'Changes Requested'}
+          {/* Waiting for review indicator */}
+          {review.status === 'in_review' && (
+            <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+              <Clock size={14} />
+              Waiting for Reviewer Approval
+            </div>
+          )}
+
+          {/* Approved Actions */}
+          {isApproved && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyText}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <Copy size={13} />
+                {copySuccess ? 'Copied!' : 'Copy Text'}
+              </button>
+              <button
+                onClick={() => handleExport('txt')}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700"
+              >
+                <Download size={13} />
+                Download .txt
+              </button>
+              <button
+                onClick={() => handleExport('docx')}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700"
+              >
+                <Download size={13} />
+                Download .docx
+              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Summary bar ── */}
-      {allIssues.length > 0 && (
-        <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 shrink-0 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Filters:</span>
-            <SummaryBar issues={allIssues} activeFilters={activeFilters} onFilterToggle={toggleFilter} />
-            {activeFilters.length > 0 && (
-              <button onClick={() => setActiveFilters([])} className="text-xs text-gray-500 hover:text-gray-800 underline">
-                Clear filters
-              </button>
-            )}
-          </div>
+      {/* ── BANNERS ── */}
 
-          {dismissedCount > 0 && (
-            <button
-              onClick={() => setShowDismissed((p) => !p)}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
-            >
-              {showDismissed ? <EyeOff size={13} /> : <Eye size={13} />}
-              {showDismissed ? 'Hide' : 'Show'} {dismissedCount} dismissed
-            </button>
-          )}
+      {/* Outcome State: Changes Requested */}
+      {isChangesRequested && (
+        <div className="bg-orange-50 border-b border-orange-200 px-6 py-3 flex items-start gap-3">
+          <AlertCircle className="text-orange-600 shrink-0 mt-0.5" size={18} />
+          <div className="flex-1">
+            <h4 className="text-xs font-bold text-orange-950 uppercase tracking-wide">
+              Changes Requested by Reviewer
+            </h4>
+            <p className="text-xs text-orange-900 mt-0.5 font-medium">
+              &ldquo;{review.latest_reviewer_comment || 'Please address open issues and resubmit for approval.'}&rdquo;
+            </p>
+          </div>
         </div>
       )}
 
-      {/* ── Two-panel layout: stacked on mobile, side-by-side on desktop ── */}
-      <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-
-        {/* LEFT: Content */}
-        <div className="md:w-3/5 overflow-y-auto border-b md:border-b-0 md:border-r border-gray-200 p-4 sm:p-6 bg-white">
-          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
-              <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Document Content</h2>
-              <span className="text-xs text-gray-400">Click highlighted text to view issue</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-gray-600">
-              <span className="flex items-center gap-1 font-medium">
-                <span className="w-3 h-3 rounded bg-red-200 border border-red-500 inline-block"></span> High
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <span className="w-3 h-3 rounded bg-yellow-200 border border-yellow-500 inline-block"></span> Med
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <span className="w-3 h-3 rounded bg-blue-100 border border-blue-400 inline-block"></span> Low
-              </span>
-            </div>
+      {/* Outcome State: Approved */}
+      {isApproved && (
+        <div className="bg-green-50 border-b border-green-200 px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="text-green-600 shrink-0" size={18} />
+            <p className="text-xs font-bold text-green-950">
+              Content Approved! Your submission meets all brand guidelines and compliance standards.
+            </p>
           </div>
-          <div className="prose prose-sm max-w-none">
-            {buildHighlightedContent(review.content_text, allIssues, activeIssueId, handleSpanClick)}
+          <span className="text-[11px] text-green-800">Ready for distribution</span>
+        </div>
+      )}
+
+      {/* Stale Banner: content modified since last check */}
+      {isStale && !isChecking && !isLocked && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="text-amber-600 shrink-0" size={16} />
+            <span className="text-xs font-semibold text-amber-900">
+              Report is out of date: content was modified (v{review.content_version}) since last check (v{review.checked_version || 0}).
+            </span>
+          </div>
+          <button
+            onClick={handleRecheck}
+            disabled={recheckLoading}
+            className="text-xs font-bold px-3 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+          >
+            One-Click Re-Check
+          </button>
+        </div>
+      )}
+
+      {/* Missing Guidelines Banner */}
+      {review.no_guidelines && (
+        <div className="bg-blue-50 border-b border-blue-200 px-6 py-2.5 flex items-center gap-2 text-xs text-blue-900">
+          <AlertCircle size={16} className="text-blue-600 shrink-0" />
+          <span>
+            No brand guidelines exist yet. Content checks cannot be evaluated until a Reviewer adds guidelines.
+          </span>
+        </div>
+      )}
+
+      {/* ── SUMMARY & FILTER BAR ── */}
+      <div className="bg-white border-b border-gray-200 px-6 py-2.5 flex items-center justify-between gap-4 flex-wrap shrink-0">
+        {/* Status filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1">Status:</span>
+          {['open', 'accepted', 'dismissed', 'all'].map((st) => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`text-xs px-2.5 py-1 rounded-full font-semibold transition-colors capitalize ${
+                statusFilter === st
+                  ? 'bg-nimbus-navy text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {st}
+            </button>
+          ))}
+        </div>
+
+        {/* Severity / Category Filter Chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1">Severity:</span>
+          {['high', 'medium', 'low'].map((sev) => {
+            const count = allIssues.filter((i) => i.severity === sev && i.status === 'open').length
+            const isSelected = activeSeverityFilter === sev
+            return (
+              <button
+                key={sev}
+                onClick={() => setActiveSeverityFilter(isSelected ? null : sev)}
+                className={`text-xs px-2.5 py-0.5 rounded-full font-bold border transition-colors capitalize ${
+                  sev === 'high'
+                    ? isSelected
+                      ? 'bg-red-600 text-white border-red-600'
+                      : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                    : sev === 'medium'
+                    ? isSelected
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                    : isSelected
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                }`}
+              >
+                {count} {sev}
+              </button>
+            )
+          })}
+
+          {(activeSeverityFilter || activeCategoryFilter) && (
+            <button
+              onClick={() => {
+                setActiveSeverityFilter(null)
+                setActiveCategoryFilter(null)
+              }}
+              className="text-xs text-gray-500 hover:text-gray-800 underline ml-2"
+            >
+              Reset filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── WORKSPACE TWO-COLUMN / STACKED CONTENT ── */}
+      <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
+        {/* LEFT COLUMN: DOCUMENT CONTENT */}
+        <div className="md:w-3/5 flex flex-col border-b md:border-b-0 md:border-r border-gray-200 bg-white overflow-hidden">
+          {/* Content Pane Header */}
+          <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between gap-3 shrink-0 bg-gray-50/50">
+            <div className="flex items-center gap-2">
+              <FileCheck size={16} className="text-gray-500" />
+              <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Document Content
+              </h2>
+            </div>
+
+            {!isLocked && (
+              <div>
+                {!isEditMode ? (
+                  <button
+                    onClick={() => setIsEditMode(true)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-nimbus-blue hover:text-blue-700 hover:underline"
+                  >
+                    <Edit3 size={13} />
+                    Edit text
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveTextContent}
+                      disabled={saveLoading}
+                      className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded bg-nimbus-blue hover:bg-blue-700 text-white transition-colors"
+                    >
+                      {saveLoading ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                      Save & Re-check
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={saveLoading}
+                      className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Content Body */}
+          <div className="p-6 overflow-y-auto flex-1 font-sans text-sm leading-relaxed">
+            {isEditMode ? (
+              <div className="h-full flex flex-col space-y-2">
+                <textarea
+                  value={editTextContent}
+                  onChange={(e) => setEditTextContent(e.target.value)}
+                  className="w-full h-full min-h-[400px] border border-gray-300 rounded-lg p-4 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-nimbus-blue resize-y"
+                  placeholder="Edit content text…"
+                />
+                <p className="text-xs text-gray-400">
+                  Saving will increment content version and automatically re-run checks.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="whitespace-pre-wrap text-gray-800 leading-relaxed text-sm">
+                  {highlightSegments.map((seg, idx) => {
+                    if (!seg.issueId) {
+                      return <span key={idx}>{seg.text}</span>
+                    }
+
+                    const isActive = seg.issueId === activeIssueId
+                    const sev = (seg.severity || 'low').toLowerCase()
+
+                    return (
+                      <mark
+                        key={idx}
+                        data-issue-id={seg.issueId}
+                        onClick={() => handleSpanClick(seg.issueId)}
+                        className={`rounded px-1 py-0.5 inline-block ${
+                          SEVERITY_HIGHLIGHT[sev] || SEVERITY_HIGHLIGHT.low
+                        } ${
+                          isActive ? SEVERITY_ACTIVE_RING[sev] || SEVERITY_ACTIVE_RING.low : ''
+                        }`}
+                        title={`Click to view issue (${sev.toUpperCase()})`}
+                      >
+                        {seg.text}
+                        {/* Non-colour-only accessible badge */}
+                        <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-1 mx-1 rounded bg-white/90 border border-current align-baseline select-none">
+                          {sev}
+                        </span>
+                      </mark>
+                    )
+                  })}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* RIGHT: Issues */}
-        <div className="md:w-2/5 overflow-y-auto p-4 bg-gray-50 flex flex-col">
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">
-              Issues ({visibleIssues.length}{visibleIssues.length !== allIssues.length ? ` of ${allIssues.length}` : ''})
+        {/* RIGHT COLUMN: ISSUES & PROGRESS */}
+        <div className="md:w-2/5 flex flex-col bg-gray-50 overflow-hidden">
+          {/* Issues Header */}
+          <div className="px-6 py-3 border-b border-gray-200 bg-white/70 flex items-center justify-between gap-3 shrink-0">
+            <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+              AI Issues Report ({filteredIssues.length} of {allIssues.length})
             </h2>
             {activeIssueId && (
               <button
                 onClick={() => setActiveIssueId(null)}
                 className="text-xs text-nimbus-blue hover:underline"
               >
-                Clear active
+                Clear active selection
               </button>
             )}
           </div>
 
-          {allIssues.some((i) => !i.location && i.status !== 'dismissed') && (
-            <p className="text-xs text-gray-400 px-1 mb-3 italic">
-              ℹ Issues without text coordinates appear in this list only.
-            </p>
-          )}
+          <div className="p-4 overflow-y-auto flex-1">
+            {/* Background Checking Progress Banner */}
+            {isChecking && (
+              <ProgressPanel
+                progress={review.progress}
+                elapsedSeconds={checkingElapsed}
+                onRetry={handleRecheck}
+              />
+            )}
 
-          <div className="flex-1">
-            {visibleIssues.length === 0 && allIssues.length === 0 ? (
-              <div className="text-center py-16">
-                <CheckCircle size={40} className="mx-auto text-green-500 mb-3" />
-                <p className="text-gray-700 text-base font-semibold">No issues found!</p>
-                <p className="text-gray-400 text-xs mt-1">This content complies with all Nimbus Bank brand guidelines.</p>
+            {/* Empty Issues State */}
+            {allIssues.length === 0 && !isChecking ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center my-6">
+                <CheckCircle size={36} className="text-emerald-500 mx-auto mb-2" />
+                <h3 className="text-sm font-bold text-gray-800">No Brand Issues Detected!</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Your content complies with all active brand guidelines, approved facts, and terminology rules.
+                </p>
               </div>
-            ) : visibleIssues.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 text-sm">
-                No issues match the current filters.
+            ) : filteredIssues.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center my-6">
+                <p className="text-xs text-gray-500">No issues match the selected filter criteria.</p>
+                <button
+                  onClick={() => {
+                    setStatusFilter('all')
+                    setActiveSeverityFilter(null)
+                    setActiveCategoryFilter(null)
+                  }}
+                  className="mt-2 text-xs font-semibold text-nimbus-blue hover:underline"
+                >
+                  Clear all filters
+                </button>
               </div>
             ) : (
-              visibleIssues.map((issue) => (
+              filteredIssues.map((issue) => (
                 <IssueCard
                   key={issue.id}
                   issue={issue}
-                  onAction={handleIssueAction}
+                  content={review.content_text}
+                  onAccept={handleAcceptIssue}
+                  onDismiss={handleDismissIssue}
+                  onReopen={handleReopenIssue}
                   isActive={activeIssueId === issue.id}
                   onClick={() => handleCardClick(issue.id)}
-                  registerRef={(el) => { cardRefs.current[issue.id] = el }}
+                  registerRef={(el) => {
+                    cardRefs.current[issue.id] = el
+                  }}
+                  isLocked={isLocked}
                 />
               ))
             )}
           </div>
         </div>
       </div>
+
+      {/* ── HIGH ISSUES CONFIRMATION MODAL ── */}
+      {highConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-red-200 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <AlertTriangle size={24} />
+              <h3 className="text-base font-bold text-gray-900">
+                Confirm High-Severity Submission
+              </h3>
+            </div>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              You are about to submit content for approval while{' '}
+              <strong className="text-red-700">{openHighIssues.length} HIGH-severity issue(s)</strong> remain open:
+            </p>
+            <div className="max-h-48 overflow-y-auto space-y-2 bg-red-50/60 p-3 rounded-lg border border-red-200">
+              {openHighIssues.map((iss) => (
+                <div key={iss.id} className="text-xs text-gray-800">
+                  <span className="font-semibold text-red-700 uppercase mr-1">[{iss.category}]</span>
+                  {iss.message}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500">
+              Submitting with high severity issues may cause brand review rejection. Are you sure you wish to continue?
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setHighConfirmOpen(false)}
+                className="text-xs font-medium text-gray-600 hover:text-gray-800 px-3 py-2"
+              >
+                Cancel & Fix
+              </button>
+              <button
+                onClick={() => handleSubmitForApproval(true)}
+                disabled={submitLoading}
+                className="text-xs font-bold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm flex items-center gap-1"
+              >
+                {submitLoading && <Loader2 size={12} className="animate-spin" />}
+                Yes, Confirm & Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── HISTORY TIMELINE SLIDEOVER / MODAL ── */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex justify-end">
+          <div className="bg-white w-full max-w-sm h-full p-6 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <History size={18} className="text-nimbus-blue" />
+                <h3 className="text-sm font-bold text-gray-800">Review & Approval History</h3>
+              </div>
+              <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-4">
+              {(!review.approval_history || review.approval_history.length === 0) ? (
+                <p className="text-xs text-gray-400 italic">No approval actions recorded yet.</p>
+              ) : (
+                review.approval_history.map((item, idx) => (
+                  <div key={idx} className="border-l-2 border-nimbus-blue pl-3 py-1 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-gray-800 capitalize">
+                        {item.action?.replace('_', ' ')}
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        {new Date(item.created_at).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    {item.comment && (
+                      <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+                        &ldquo;{item.comment}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

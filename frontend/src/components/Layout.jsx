@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   FilePlus,
   ClipboardCheck,
-  CheckSquare,
   BookOpen,
   FileText,
   LogOut,
@@ -19,17 +18,7 @@ const ROLE_COLORS = {
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard, roles: null },
-  { to: '/submit', label: 'Submit Content', Icon: FilePlus, roles: ['creator', 'manager'] },
-  { to: '/approvals', label: 'Review Queue', Icon: ClipboardCheck, roles: ['manager', 'reviewer'] },
-  { to: '/approvals', label: 'Approvals', Icon: CheckSquare, roles: ['manager', 'reviewer'] },
-  { to: '/guidelines', label: 'Guidelines', Icon: BookOpen, roles: ['admin'] },
-  { to: '/audit', label: 'Audit Log', Icon: FileText, roles: ['admin'] },
-]
-
-// Deduplicate nav items (review queue & approvals share /approvals)
-const UNIQUE_NAV = [
-  { to: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard, roles: null },
-  { to: '/submit', label: 'Submit Content', Icon: FilePlus, roles: ['creator', 'manager'] },
+  { to: '/submit', label: 'New Review', Icon: FilePlus, roles: ['creator', 'manager'] },
   { to: '/approvals', label: 'Review Queue', Icon: ClipboardCheck, roles: ['manager', 'reviewer'] },
   { to: '/guidelines', label: 'Guidelines', Icon: BookOpen, roles: ['admin'] },
   { to: '/audit', label: 'Audit Log', Icon: FileText, roles: ['admin'] },
@@ -44,7 +33,7 @@ export default function Layout({ children }) {
     navigate('/login')
   }
 
-  const visibleNav = UNIQUE_NAV.filter(
+  const visibleNav = NAV_ITEMS.filter(
     (item) => !item.roles || item.roles.includes(user?.role)
   )
 

@@ -31,3 +31,13 @@ Only features that work end-to-end appear in the README's "Done" section.
 | Facts grounding uses full approved fact set in prompt instead of vector retrieval | P2 (design note) | Prompt includes full approved facts set for high precision across current guideline sizes (~50-100 chunks); vector retrieval can be integrated if guidelines grow beyond context window | Facts Agent |
 | In-memory LLM cache is per-process | Low | Sufficient for single-instance / development; can switch to Redis if horizontal scaling is needed | Backend Agent |
 | Accessibility and visual checks remain stubs | P1 | Return `[]` as designed for current phase | Visual Agent |
+
+---
+
+## Feature: Review Screen & Upload (2026-11-07)
+
+| Issue | Severity | Workaround | Owner |
+|-------|----------|------------|-------|
+| Image / poster visual review dropped for this round | P1 | Scoped out per hackathon priority; focus remains on text copy, PDF documents, and Word DOCX workflows | Visual Agent |
+| Scanned image-only PDFs with no OCR layer cannot extract text | Low | User must copy/paste text directly or provide digital PDF with selectable text layer | Backend Agent |
+| PPTX / presentation review not supported | Low | Explicitly out of scope; export presentation notes/text to DOCX or paste into review | Frontend Agent |

@@ -18,13 +18,14 @@
 - ✅ Approval workflow (Manager/Reviewer can approve)
 - ✅ Audit log
 - ✅ Guidelines admin (upload new guidelines)
-- ✅ Dynamic brand guidelines and automated checks
+- ✅ Seeded Nimbus Bank demo data with 3 planted-issue reviews
 
 ## What's Coming (P1)
 
 - 🔲 PDF/DOCX file upload
 - 🔲 Image visual checks (palette, contrast)
 - 🔲 Accessibility readability checks
+- 🔲 LLM-powered tone/facts checks (regex stubs exist now)
 - 🔲 Analytics dashboard
 
 ---
@@ -35,10 +36,10 @@ All use password: **`demo1234`**
 
 | Role | Email | Access |
 |------|-------|--------|
-| Creator | creator@brandguard.ai | Submit content |
-| Manager | manager@brandguard.ai | Review + approve |
-| Reviewer | reviewer@brandguard.ai | Review + approve |
-| Admin | admin@brandguard.ai | Manage guidelines |
+| Creator | creator@nimbus.bank | Submit content |
+| Manager | manager@nimbus.bank | Review + approve |
+| Reviewer | reviewer@nimbus.bank | Review + approve |
+| Admin | admin@nimbus.bank | Manage guidelines |
 
 ---
 
@@ -59,11 +60,8 @@ pip install -r requirements.txt
 # Copy env example (no secrets needed for local dev)
 cp ../.env.example .env
 
-# Seed demo users (app starts blank; no seeded brand content)
+# Seed demo data
 python seed/seed.py
-
-# To reset database back to blank state:
-python seed/seed.py --reset
 
 # Start server
 uvicorn app.main:app --reload
@@ -143,7 +141,7 @@ BrandGuard/
 │   │   ├── llm/        # Gemini provider (isolated)
 │   │   ├── models/     # DB + Pydantic schemas
 │   │   └── services/   # Business logic
-│   └── seed/           # Demo user seed script
+│   └── seed/           # Demo data seed script
 ├── docs/               # Architecture, API, Issue schema
 ├── AGENTS.md           # Multi-agent collaboration guide
 ├── CHANGES.md          # Decision log

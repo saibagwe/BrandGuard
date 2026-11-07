@@ -26,7 +26,7 @@ _CHECK_FUNCTIONS: list[Callable[[str, dict], list[Issue]]] = [
 def build_context_from_db(db: Optional[Session] = None, review_id: str = "", review_title: str = "") -> dict:
     """Build review context dictionary from stored GuidelineDoc records in db.
     
-    If no documents exist, returns an empty context with has_guidelines=False.
+    Falls back to seeded Nimbus Bank defaults when no documents exist.
     Computes a context_version hash so check caching invalidates on guideline changes.
     """
     if db is None:
@@ -37,7 +37,6 @@ def build_context_from_db(db: Optional[Session] = None, review_id: str = "", rev
             "voice_guide": DEFAULT_VOICE_GUIDE,
             "terminology": DEFAULT_TERMINOLOGY,
             "facts": DEFAULT_APPROVED_FACTS,
-            "has_guidelines": bool(DEFAULT_VOICE_GUIDE or DEFAULT_TERMINOLOGY or DEFAULT_APPROVED_FACTS),
             "context_version": context_version,
         }
 
@@ -53,7 +52,6 @@ def build_context_from_db(db: Optional[Session] = None, review_id: str = "", rev
     terminology = "\n\n".join(term_docs) if term_docs else DEFAULT_TERMINOLOGY
     facts_str = "\n\n".join(fact_docs) if fact_docs else DEFAULT_APPROVED_FACTS
 
-    has_guidelines = bool(voice_guide or terminology or facts_str)
     context_version = compute_context_version(voice_guide, terminology, facts_str)
 
     return {
@@ -62,7 +60,6 @@ def build_context_from_db(db: Optional[Session] = None, review_id: str = "", rev
         "voice_guide": voice_guide,
         "terminology": terminology,
         "facts": facts_str,
-        "has_guidelines": has_guidelines,
         "context_version": context_version,
     }
 

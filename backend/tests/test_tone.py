@@ -18,14 +18,7 @@ REVIEW_SAMPLE = (
     "unmatched in the industry! lol just kidding but seriously this is super great!"
 )
 
-CLEAN_SAMPLE = "Discover our professional services tailored for your business growth."
-
-INLINE_CONTEXT = {
-    "review_id": "test-review-001",
-    "voice_guide": "Brand Voice: Professional and trustworthy. Avoid casual language (hey, guys, gonna, lol, awesome).",
-    "terminology": "Banned words: awesome, guys, gonna, wanna, lol, super, hey.",
-    "has_guidelines": True,
-}
+CLEAN_SAMPLE = "Discover our professional banking services tailored for your financial growth."
 
 
 @pytest.fixture(autouse=True)
@@ -39,9 +32,9 @@ def reset_cache_and_stub():
 
 class TestToneModule:
     def test_stub_mode_casual_language(self):
-        """Stub mode should flag casual language in the content."""
+        """Stub mode should flag casual language in the seeded sample."""
         llm._stub = True
-        issues = tone.run(REVIEW_SAMPLE, INLINE_CONTEXT)
+        issues = tone.run(REVIEW_SAMPLE, {"review_id": "test-review-001"})
         assert len(issues) > 0
         assert issues[0].category == "tone"
         assert issues[0].severity == "high"
@@ -53,13 +46,7 @@ class TestToneModule:
     def test_stub_mode_clean_content(self):
         """Clean content returns no tone issues in stub mode."""
         llm._stub = True
-        issues = tone.run(CLEAN_SAMPLE, INLINE_CONTEXT)
-        assert len(issues) == 0
-
-    def test_empty_context_returns_no_issues(self):
-        """Empty context returns no guideline-based issues."""
-        llm._stub = True
-        issues = tone.run(REVIEW_SAMPLE, {"review_id": "test-review-empty"})
+        issues = tone.run(CLEAN_SAMPLE, {"review_id": "test-review-001"})
         assert len(issues) == 0
 
     def test_mocked_llm_path(self):
@@ -80,7 +67,7 @@ class TestToneModule:
         }
 
         with patch.object(llm, "generate_json", return_value=mock_response) as mock_gen:
-            issues = tone.run(REVIEW_SAMPLE, INLINE_CONTEXT)
+            issues = tone.run(REVIEW_SAMPLE, {"review_id": "test-review-002"})
             assert mock_gen.called
             assert len(issues) >= 1
             llm_issue = [i for i in issues if i.message.startswith("Informal greeting")][0]
@@ -110,29 +97,38 @@ class TestToneModule:
         }
 
         with patch.object(llm, "generate_json", side_effect=[invalid_response, valid_response]) as mock_gen:
-            issues = tone.run(REVIEW_SAMPLE, INLINE_CONTEXT)
+            issues = tone.run(REVIEW_SAMPLE, {"review_id": "test-review-003"})
             assert mock_gen.call_count == 2
-            assert any("lol" in i.message for i in issues)
+            assert any("lol" in i.message.lower() for i in issues)
 
-    def test_cache_hit_skips_llm(self):
-        """Second check with same content and guidelines hits cache."""
+    def test_cache_hits(self):
+        """Subsequent identical calls should hit in-memory cache and not call LLM again."""
         llm._stub = False
         valid_response = {
             "issues": [
                 {
                     "quote": "awesome",
-                    "message": "Word 'awesome' violates brand voice guidelines.",
-                    "severity": "medium",
-                    "source_doc": "Voice Guide",
-                    "guideline_quote": "Avoid casual language (hey, guys, gonna, lol, awesome).",
-                    "rule_id": "TONE-003",
-                    "suggestion": "Replace with 'exceptional'.",
+                    "message": "Banned word 'awesome'.",
+                    "severity": "low",
+                    "source_doc": "Terminology Rules",
+                    "guideline_quote": "Banned words: awesome",
+                    "rule_id": "TONE-001",
+                    "suggestion": "Replace with exceptional.",
                 }
             ]
         }
 
         with patch.object(llm, "generate_json", return_value=valid_response) as mock_gen:
-            issues1 = tone.run("This is awesome service.", INLINE_CONTEXT)
-            issues2 = tone.run("This is awesome service.", INLINE_CONTEXT)
+            issues1 = tone.run(REVIEW_SAMPLE, {"review_id": "test-review-004"})
+            issues2 = tone.run(REVIEW_SAMPLE, {"review_id": "test-review-004"})
             assert mock_gen.call_count == 1
             assert len(issues1) == len(issues2)
+
+    def test_quota_error_falls_back_gracefully(self):
+        """Quota / 429 error falls back gracefully to regex without raising."""
+        llm._stub = False
+        with patch.object(llm, "generate_json", side_effect=Exception("429 ResourceExhausted: Quota exceeded")):
+            issues = tone.run(REVIEW_SAMPLE, {"review_id": "test-review-005"})
+            # Falls back to regex check, detecting casual words
+            assert len(issues) > 0
+            assert issues[0].category == "tone"

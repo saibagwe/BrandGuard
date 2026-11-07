@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -18,28 +18,88 @@ from app.models.schemas import (
     ReviewOut,
 )
 from app.services import review_service, audit_service
+from app.services.file_extraction import extract, ExtractionError
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 
 # ---------------------------------------------------------------------------
-# Neutral sample — no auth needed
+# Hardcoded sample — no auth needed
 # ---------------------------------------------------------------------------
+
+_SAMPLE_REVIEW_ID = "sample-review-001"
+_SAMPLE_ISSUES = [
+    Issue(
+        id="sample-issue-001",
+        review_id=_SAMPLE_REVIEW_ID,
+        category="tone",
+        severity="high",
+        location=IssueLocation(start=0, end=9),
+        message="Casual language detected: ['hey', 'guys', 'gonna', 'awesome', 'lol', 'super']. These words violate Nimbus Bank brand voice guidelines.",
+        evidence=IssueEvidence(
+            source_doc="Terminology Rules",
+            quote="Banned words: awesome, guys, gonna, wanna, lol, super, hey.",
+            rule_id="TONE-001",
+        ),
+        suggestion=(
+            "Rewrite as: 'Discover our summer savings offer. Enjoy 3.2% APY on your "
+            "NimbusGrow Savings account — a rate designed to help you grow your money.'"
+        ),
+        status="open",
+    ),
+    Issue(
+        id="sample-issue-002",
+        review_id=_SAMPLE_REVIEW_ID,
+        category="fact",
+        severity="high",
+        location=IssueLocation(start=72, end=82),
+        message="Incorrect APY stated: '2.5% APY'. Approved fact states NimbusGrow Savings is 3.2% APY.",
+        evidence=IssueEvidence(
+            source_doc="Approved Facts",
+            quote="NimbusGrow Savings: 3.2% APY as of Q1 2024.",
+            rule_id="FACT-APY-001",
+        ),
+        suggestion="Replace '2.5% APY' with '3.2% APY'.",
+        status="open",
+    ),
+    Issue(
+        id="sample-issue-003",
+        review_id=_SAMPLE_REVIEW_ID,
+        category="claim",
+        severity="medium",
+        location=IssueLocation(start=100, end=113),
+        message="Unsubstantiated superlative claims detected: ['best in class', 'unmatched']. These claims require substantiation or must be removed.",
+        evidence=IssueEvidence(
+            source_doc="Brand Guidelines",
+            quote="All comparative or superlative claims must be substantiated with verified data.",
+            rule_id="CLAIM-001",
+        ),
+        suggestion="Remove or qualify claims. Use 'competitive rates' instead of 'best in class', or cite a verified source.",
+        status="open",
+    ),
+]
+
+SAMPLE_REVIEW = ReviewOut(
+    id=_SAMPLE_REVIEW_ID,
+    title="Summer Savings Campaign",
+    content_text=(
+        "Hey guys! You're gonna love our awesome summer savings deal! "
+        "Get 2.5% APY on your savings account - best in class rates that are totally "
+        "unmatched in the industry! lol just kidding but seriously this is super great!"
+    ),
+    content_type="text",
+    status="in_review",
+    submitted_by="creator@nimbus.bank",
+    created_at=datetime(2024, 1, 15, 10, 0, 0),
+    updated_at=datetime(2024, 1, 15, 10, 0, 0),
+    issues=_SAMPLE_ISSUES,
+)
+
 
 @router.get("/sample", response_model=ReviewOut)
 def get_sample_review():
-    """Empty neutral sample review — no auth required."""
-    return ReviewOut(
-        id="sample-review-001",
-        title="Sample Review",
-        content_text="BrandGuard AI provides automated compliance checking against uploaded brand guidelines.",
-        content_type="text",
-        status="draft",
-        submitted_by="creator@brandguard.ai",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
-        issues=[],
-    )
+    """Hardcoded sample review — no auth required, for frontend dev."""
+    return SAMPLE_REVIEW
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +152,55 @@ def _review_to_out(review: Review, db: Session) -> ReviewOut:
         updated_at=review.updated_at,
         issues=_db_issues_to_schema(db_issues),
     )
+
+
+# ---------------------------------------------------------------------------
+# File upload endpoint (PDF / DOCX / plain text)
+# ---------------------------------------------------------------------------
+
+@router.post("/upload", response_model=ReviewOut, status_code=status.HTTP_201_CREATED)
+async def upload_review(
+    title: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("creator", "manager", "reviewer", "admin")),
+):
+    """Create and immediately submit a review from an uploaded PDF, DOCX, or text file.
+
+    Limits: 10 MB max. Supports PDF (requires selectable text), DOCX, TXT.
+    """
+    raw = await file.read()
+    filename = file.filename or ""
+
+    try:
+        content_text, content_type = extract(filename, raw)
+    except ExtractionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    review = Review(
+        id=str(uuid4()),
+        title=(title.strip() or filename) or "Uploaded Document",
+        content_text=content_text,
+        content_type=content_type,  # type: ignore[arg-type]
+        status="draft",
+        submitted_by=current_user.id,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    audit_service.log(db, current_user.id, "create", "review", review.id)
+
+    # Immediately submit for AI checks
+    review.status = "in_review"
+    review.updated_at = datetime.utcnow()
+    db.commit()
+    review_service.run_checks(review, db)
+    db.refresh(review)
+    audit_service.log(db, current_user.id, "submit", "review", review.id)
+
+    return _review_to_out(review, db)
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +308,8 @@ def update_issue_status(
         raise HTTPException(status_code=400, detail="Invalid status value")
 
     issue.status = new_status
+    if new_status == "edited" and payload.get("edited_suggestion"):
+        issue.suggestion = payload["edited_suggestion"]
     db.commit()
     db.refresh(issue)
 

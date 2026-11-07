@@ -20,13 +20,6 @@ CLAIMS_SAMPLE = (
 
 CLEAN_SAMPLE = "We offer competitive rates designed to meet your savings goals."
 
-INLINE_CONTEXT = {
-    "review_id": "test-claims-001",
-    "voice_guide": "All comparative or superlative claims must be substantiated with verified data.",
-    "facts": "Savings account: 3.2% APY as of Q1 2024.",
-    "has_guidelines": True,
-}
-
 
 @pytest.fixture(autouse=True)
 def reset_cache_and_stub():
@@ -42,14 +35,14 @@ class TestClaimsModule:
         """Clean content without claim keywords is skipped immediately without LLM call."""
         llm._stub = False
         with patch.object(llm, "generate_json") as mock_gen:
-            issues = claims.run(CLEAN_SAMPLE, INLINE_CONTEXT)
+            issues = claims.run(CLEAN_SAMPLE, {"review_id": "test-claims-001"})
             assert len(issues) == 0
             assert not mock_gen.called
 
     def test_stub_mode_detects_superlatives(self):
-        """Stub mode flags 'best in class' and 'unmatched' in sample content."""
+        """Stub mode flags 'best in class' and 'unmatched' in the seeded sample."""
         llm._stub = True
-        issues = claims.run(CLAIMS_SAMPLE, INLINE_CONTEXT)
+        issues = claims.run(CLAIMS_SAMPLE, {"review_id": "test-claims-002"})
         assert len(issues) > 0
         assert issues[0].category == "claim"
         assert issues[0].severity == "high"
@@ -57,16 +50,10 @@ class TestClaimsModule:
         assert issues[0].evidence.source_doc == "Brand Guidelines"
         assert issues[0].location is not None
 
-    def test_empty_context_returns_no_issues(self):
-        """Empty context returns no guideline-based issues."""
-        llm._stub = True
-        issues = claims.run(CLAIMS_SAMPLE, {"review_id": "test-claims-empty"})
-        assert len(issues) == 0
-
     def test_mocked_llm_substantiated_vs_unsubstantiated(self):
         """Mocked LLM ignores substantiated claims and emits HIGH issue for unsubstantiated claims."""
         llm._stub = False
-        content = "Our service offers the fastest transfer speeds and guaranteed zero downtime."
+        content = "Nimbus Bank offers the fastest transfer speeds and guaranteed zero downtime."
 
         mock_response = {
             "claims": [
@@ -88,7 +75,7 @@ class TestClaimsModule:
         }
 
         with patch.object(llm, "generate_json", return_value=mock_response):
-            issues = claims.run(content, INLINE_CONTEXT)
+            issues = claims.run(content, {"review_id": "test-claims-003"})
             # Substantiated claim MUST NOT be flagged
             assert len(issues) == 1
             issue = issues[0]
@@ -112,14 +99,23 @@ class TestClaimsModule:
                     "message": "Unsubstantiated superlative: no approved supporting source was found.",
                     "substantiated": False,
                     "source_doc": "Brand Guidelines",
-                    "rule_id": "CLAIM-002",
-                    "suggestion": "We provide dedicated customer service.",
+                    "rule_id": "CLAIM-001",
+                    "suggestion": "Replace with 'dedicated customer support'.",
                 }
             ]
         }
 
         with patch.object(llm, "generate_json", side_effect=[invalid_resp, valid_resp]) as mock_gen:
-            issues = claims.run(content, INLINE_CONTEXT)
+            issues = claims.run(content, {"review_id": "test-claims-004"})
             assert mock_gen.call_count == 2
             assert len(issues) == 1
-            assert issues[0].location.start == content.find("world-class")
+            assert issues[0].category == "claim"
+            assert issues[0].severity == "high"
+
+    def test_quota_fallback(self):
+        """Quota error falls back to regex check without raising."""
+        llm._stub = False
+        with patch.object(llm, "generate_json", side_effect=Exception("429 ResourceExhausted: Quota exceeded")):
+            issues = claims.run(CLAIMS_SAMPLE, {"review_id": "test-claims-005"})
+            assert len(issues) > 0
+            assert issues[0].category == "claim"

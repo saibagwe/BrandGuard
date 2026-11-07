@@ -3,7 +3,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
+        nimbus: {
           navy: '#003366',
           blue: '#0066CC',
           gold: '#F5A623',

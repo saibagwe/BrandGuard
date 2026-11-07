@@ -42,20 +42,6 @@ def run_checks(review: Review, db: Session) -> list[IssueDB]:
     # Build context from stored guideline docs in db
     context = build_context_from_db(db, review.id, review.title)
 
-    # If no guidelines are configured, return empty issues without failing
-    if not context.get("has_guidelines"):
-        db.query(IssueDB).filter(IssueDB.review_id == review.id).delete()
-        db.commit()
-        audit_service.log(
-            db=db,
-            actor_id=review.submitted_by,
-            action="run_checks",
-            resource_type="review",
-            resource_id=review.id,
-            detail="No guidelines configured; checks skipped",
-        )
-        return []
-
     # Run checks (async inside a sync context)
     try:
         loop = asyncio.get_event_loop()

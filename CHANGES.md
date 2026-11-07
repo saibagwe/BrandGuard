@@ -42,7 +42,7 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - In `backend/app/models/schemas.py` and `backend/app/api/auth.py`, updated `LoginRequest` to accept either `email` or `username` so both calling conventions succeed.
 - Created `getErrorMessage()` in `frontend/src/api/client.js` to safely normalize FastAPI validation errors (`detail` array of `{type, loc, msg, input}`) into human-readable strings, eliminating React Minified Error #31.
 - Updated `ReviewCreate` and `ApprovalCreate` to be resilient to client field aliases (`content` vs `content_text`, `decision` vs `action`).
-- Removed legacy branding footer from `LoginPage.jsx`.
+- Removed the footer `© 2026 Nimbus Bank — Internal Brand Governance Tool` from `LoginPage.jsx`.
 
 ---
 
@@ -61,7 +61,7 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - Extended `backend/app/api/guidelines.py` to support full Admin CRUD (POST, GET, PUT/PATCH, DELETE) with `require_role("admin")`.
 - Supports document types `voice` (`brand-voice`), `terminology`, `facts` (`approved-facts`), and `visual`.
 - Added automatic re-chunking/embedding and audit logging (`create`, `update`, `delete`) on every guideline change.
-- In `backend/app/checks/orchestrator.py`, added `build_context_from_db(db, review_id, review_title)` so reviews dynamically fetch latest guidelines from the database (falling back to empty default context).
+- In `backend/app/checks/orchestrator.py`, added `build_context_from_db(db, review_id, review_title)` so reviews dynamically fetch latest guidelines from the database (falling back to seeded Nimbus Bank defaults).
 - Updated `backend/app/services/review_service.py` so the NEXT review immediately incorporates created, updated, or deleted guidelines.
 - Updated `frontend/src/pages/GuidelinesPage.jsx` with full Admin Edit (modal/inline form) and Delete (with confirmation) workflows.
 
@@ -70,6 +70,20 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 
 ---
 
-## Chore: Remove Seeded Brand Data (2026-11-07)
+## Feature: Interactive Review Screen & File Upload (2026-11-07)
 
-- Removed all seeded brand data; app starts empty and Admin uploads guidelines
+**Feature: Multipart Document Upload (PDF, DOCX, Text)**
+- Added `backend/app/services/file_extraction.py` supporting text extraction from PDF (PyMuPDF) and Word DOCX (python-docx), with plain-text fallback.
+- Added file size limit of 10 MB, with explicit error handling for empty files, oversized files, scanned PDFs with no selectable text, and unsupported extensions (e.g. PPTX, XLSX, images).
+- Implemented `POST /api/reviews/upload` multipart endpoint in `backend/app/api/reviews.py` to upload, extract text, store filename and content type, and trigger the AI check pipeline in a single step.
+- Added sample seed documents (`backend/seed/sample.pdf`, `backend/seed/sample.docx`) and comprehensive unit tests (`backend/tests/test_file_extraction.py`).
+- Enhanced `frontend/src/pages/SubmitPage.jsx` with a tabbed interface allowing users to either paste text or upload PDF/DOCX/TXT files via drag-and-drop or file picker, displaying file metadata and progress states.
+
+**Feature: Interactive Review Screen & Span Highlighting**
+- Upgraded `frontend/src/pages/ReviewPage.jsx` with an interactive text highlight engine that maps issues to character offsets `{start, end}` with severity colors, underlines, and accessible labels.
+- Safely handles overlapping highlight spans by prioritizing higher severity issues and renders null-location issues in the issue sidebar list only.
+- Two-way scroll and focus navigation: clicking an issue card highlights and scrolls to its corresponding span in the document; clicking a highlighted span scrolls to and focuses the issue card.
+- Comprehensive issue card actions: Accept (applies fix to document and adjusts downstream character offsets), Edit (user customizes replacement text before applying), and Dismiss (hides the issue).
+- Added summary bar with interactive filter chips by severity (High, Med, Low) and category (Tone, Fact, Claim, etc.), plus a toggle to view/hide dismissed issues.
+- Added responsive design that stacks columns on mobile screens and presents side-by-side on desktop.
+- Added "Submit for approval" workflow: available immediately when 0 HIGH issues are open, or displays a warning with an explicit confirmation step when HIGH issues remain.

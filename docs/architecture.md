@@ -61,9 +61,9 @@ backend/
 │       ├── embedding_service.py # Chunk + embed + cosine similarity
 │       └── audit_service.py     # Audit log helper
 ├── seed/
-│   └── seed.py              # Idempotent seed: demo users
+│   └── seed.py              # Idempotent seed: users, Nimbus Bank data
 └── tests/
-    └── test_checks.py       # Proves checks catch issues from guidelines
+    └── test_checks.py       # Proves checks catch planted issues
 ```
 
 ---

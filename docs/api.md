@@ -14,7 +14,7 @@ No auth required.
 
 **Request:**
 ```json
-{ "email": "creator@brandguard.ai", "password": "demo1234" }
+{ "email": "creator@nimbus.bank", "password": "demo1234" }
 ```
 
 **Response 200:**
@@ -24,7 +24,7 @@ No auth required.
   "token_type": "bearer",
   "user": {
     "id": "uuid",
-    "email": "creator@brandguard.ai",
+    "email": "creator@nimbus.bank",
     "role": "creator",
     "full_name": "Alex Creator"
   }
@@ -80,7 +80,7 @@ Creators see own reviews. Managers/Reviewers see all in_review+.
 
 ### GET /reviews/sample
 **Auth:** None (public, for frontend dev)  
-Returns neutral sample review placeholder.
+Returns hardcoded sample review (Nimbus Bank Summer Campaign with 3 planted issues).
 
 ---
 
@@ -91,6 +91,22 @@ Triggers AI checks. Changes status from `draft` to `in_review`.
 
 ---
 
+
+### POST /reviews/upload
+**Auth:** Creator, Manager, Reviewer, Admin
+**Content-Type:** `multipart/form-data`
+**Query params:** `title` (string, required)
+**Form fields:** `file` (binary — PDF, DOCX, or TXT, max 10 MB)
+
+Extracts text from the uploaded file, creates a review, runs AI checks in one step, returns ReviewOut.
+
+**Supported:** `.pdf` (selectable-text only), `.docx`, `.txt` / `.md`
+
+**Errors:** 400 — empty file, >10 MB, unsupported type, scanned PDF with no text, corrupt file
+
+**Response 201:** ReviewOut (status = `in_review`, issues populated)
+
+---
 ### PATCH /reviews/{id}/issues/{issue_id}
 **Auth:** Manager, Reviewer  
 **Request:**
@@ -255,4 +271,4 @@ HTTP status codes: 400 (bad request), 401 (not authenticated), 403 (forbidden), 
 
 ---
 
-*Last updated: 2026-11-07*
+*Last updated: Phase 0 â€” 2026-11-05*

@@ -23,82 +23,23 @@ router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 
 # ---------------------------------------------------------------------------
-# Hardcoded sample — no auth needed
+# Neutral sample — no auth needed
 # ---------------------------------------------------------------------------
-
-_SAMPLE_REVIEW_ID = "sample-review-001"
-_SAMPLE_ISSUES = [
-    Issue(
-        id="sample-issue-001",
-        review_id=_SAMPLE_REVIEW_ID,
-        category="tone",
-        severity="high",
-        location=IssueLocation(start=0, end=9),
-        message="Casual language detected: ['hey', 'guys', 'gonna', 'awesome', 'lol', 'super']. These words violate Nimbus Bank brand voice guidelines.",
-        evidence=IssueEvidence(
-            source_doc="Terminology Rules",
-            quote="Banned words: awesome, guys, gonna, wanna, lol, super, hey.",
-            rule_id="TONE-001",
-        ),
-        suggestion=(
-            "Rewrite as: 'Discover our summer savings offer. Enjoy 3.2% APY on your "
-            "NimbusGrow Savings account — a rate designed to help you grow your money.'"
-        ),
-        status="open",
-    ),
-    Issue(
-        id="sample-issue-002",
-        review_id=_SAMPLE_REVIEW_ID,
-        category="fact",
-        severity="high",
-        location=IssueLocation(start=72, end=82),
-        message="Incorrect APY stated: '2.5% APY'. Approved fact states NimbusGrow Savings is 3.2% APY.",
-        evidence=IssueEvidence(
-            source_doc="Approved Facts",
-            quote="NimbusGrow Savings: 3.2% APY as of Q1 2024.",
-            rule_id="FACT-APY-001",
-        ),
-        suggestion="Replace '2.5% APY' with '3.2% APY'.",
-        status="open",
-    ),
-    Issue(
-        id="sample-issue-003",
-        review_id=_SAMPLE_REVIEW_ID,
-        category="claim",
-        severity="medium",
-        location=IssueLocation(start=100, end=113),
-        message="Unsubstantiated superlative claims detected: ['best in class', 'unmatched']. These claims require substantiation or must be removed.",
-        evidence=IssueEvidence(
-            source_doc="Brand Guidelines",
-            quote="All comparative or superlative claims must be substantiated with verified data.",
-            rule_id="CLAIM-001",
-        ),
-        suggestion="Remove or qualify claims. Use 'competitive rates' instead of 'best in class', or cite a verified source.",
-        status="open",
-    ),
-]
-
-SAMPLE_REVIEW = ReviewOut(
-    id=_SAMPLE_REVIEW_ID,
-    title="Summer Savings Campaign",
-    content_text=(
-        "Hey guys! You're gonna love our awesome summer savings deal! "
-        "Get 2.5% APY on your savings account - best in class rates that are totally "
-        "unmatched in the industry! lol just kidding but seriously this is super great!"
-    ),
-    content_type="text",
-    status="in_review",
-    submitted_by="creator@nimbus.bank",
-    created_at=datetime(2024, 1, 15, 10, 0, 0),
-    updated_at=datetime(2024, 1, 15, 10, 0, 0),
-    issues=_SAMPLE_ISSUES,
-)
-
 
 @router.get("/sample", response_model=ReviewOut)
 def get_sample_review():
-    """Hardcoded sample review — no auth required, for frontend dev."""
-    return SAMPLE_REVIEW
+    """Empty neutral sample review — no auth required."""
+    return ReviewOut(
+        id="sample-review-001",
+        title="Sample Review",
+        content_text="BrandGuard AI provides automated compliance checking against uploaded brand guidelines.",
+        content_type="text",
+        status="draft",
+        submitted_by="creator@brandguard.ai",
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        issues=[],
+    )
 
 
 # ---------------------------------------------------------------------------

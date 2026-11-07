@@ -42,7 +42,7 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - In `backend/app/models/schemas.py` and `backend/app/api/auth.py`, updated `LoginRequest` to accept either `email` or `username` so both calling conventions succeed.
 - Created `getErrorMessage()` in `frontend/src/api/client.js` to safely normalize FastAPI validation errors (`detail` array of `{type, loc, msg, input}`) into human-readable strings, eliminating React Minified Error #31.
 - Updated `ReviewCreate` and `ApprovalCreate` to be resilient to client field aliases (`content` vs `content_text`, `decision` vs `action`).
-- Removed the footer `© 2026 Nimbus Bank — Internal Brand Governance Tool` from `LoginPage.jsx`.
+- Removed legacy branding footer from `LoginPage.jsx`.
 
 ---
 
@@ -61,9 +61,15 @@ Both free tier. Render backend sleeps, so frontend shows a friendly wakeup messa
 - Extended `backend/app/api/guidelines.py` to support full Admin CRUD (POST, GET, PUT/PATCH, DELETE) with `require_role("admin")`.
 - Supports document types `voice` (`brand-voice`), `terminology`, `facts` (`approved-facts`), and `visual`.
 - Added automatic re-chunking/embedding and audit logging (`create`, `update`, `delete`) on every guideline change.
-- In `backend/app/checks/orchestrator.py`, added `build_context_from_db(db, review_id, review_title)` so reviews dynamically fetch latest guidelines from the database (falling back to seeded Nimbus Bank defaults).
+- In `backend/app/checks/orchestrator.py`, added `build_context_from_db(db, review_id, review_title)` so reviews dynamically fetch latest guidelines from the database (falling back to empty default context).
 - Updated `backend/app/services/review_service.py` so the NEXT review immediately incorporates created, updated, or deleted guidelines.
 - Updated `frontend/src/pages/GuidelinesPage.jsx` with full Admin Edit (modal/inline form) and Delete (with confirmation) workflows.
 
 **API: GET /api/status Endpoint**
 - Added `/api/status` endpoint to report DB reachability and whether an LLM key is configured, exposing no secrets.
+
+---
+
+## Chore: Remove Seeded Brand Data (2026-11-07)
+
+- Removed all seeded brand data; app starts empty and Admin uploads guidelines

@@ -60,7 +60,7 @@ function IssueCard({ issue, onAction, isActive, onClick }) {
       onClick={onClick}
       className={`rounded-xl border p-4 mb-3 cursor-pointer transition-all ${
         isActive
-          ? 'border-nimbus-blue shadow-md bg-blue-50'
+          ? 'border-brand-blue shadow-md bg-blue-50'
           : 'border-gray-200 bg-white hover:border-gray-300'
       } ${isDone ? 'opacity-60' : ''}`}
     >
@@ -187,7 +187,7 @@ function highlightContent(content, issues, activeIssueId, onIssueClick) {
             key={i}
             onClick={() => onIssueClick(seg.issueId)}
             className={`rounded px-0.5 ${SEVERITY_HIGHLIGHT[seg.severity?.toLowerCase()] || SEVERITY_HIGHLIGHT.low} ${
-              activeIssueId === seg.issueId ? 'ring-2 ring-offset-1 ring-nimbus-blue' : ''
+              activeIssueId === seg.issueId ? 'ring-2 ring-offset-1 ring-brand-blue' : ''
             }`}
           >
             {seg.text}
@@ -211,6 +211,14 @@ export default function ReviewPage() {
   const [activeIssueId, setActiveIssueId] = useState(null)
   const [decisionLoading, setDecisionLoading] = useState(null)
   const [decisionDone, setDecisionDone] = useState('')
+  const [hasConfiguredGuidelines, setHasConfiguredGuidelines] = useState(true)
+
+  useEffect(() => {
+    api.get('/guidelines').then((res) => {
+      const docs = Array.isArray(res.data) ? res.data : []
+      setHasConfiguredGuidelines(docs.length > 0)
+    }).catch(() => {})
+  }, [])
 
   const fetchReview = useCallback(async () => {
     setLoading(true)
@@ -266,7 +274,7 @@ export default function ReviewPage() {
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
           <AlertCircle className="mx-auto text-red-400 mb-3" size={32} />
           <p className="text-red-700 font-medium">{error}</p>
-          <button onClick={() => navigate(-1)} className="mt-4 text-sm text-nimbus-blue hover:underline">
+          <button onClick={() => navigate(-1)} className="mt-4 text-sm text-brand-blue hover:underline">
             ← Go back
           </button>
         </div>
@@ -350,8 +358,17 @@ export default function ReviewPage() {
           {issues.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle size={36} className="mx-auto text-green-400 mb-3" />
-              <p className="text-gray-500 text-sm font-medium">No issues found!</p>
-              <p className="text-gray-400 text-xs mt-1">This content looks brand-compliant.</p>
+              {hasConfiguredGuidelines ? (
+                <>
+                  <p className="text-gray-600 text-sm font-medium">No issues found!</p>
+                  <p className="text-gray-400 text-xs mt-1">This content looks brand-compliant.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-600 text-sm font-medium">No brand guidelines configured.</p>
+                  <p className="text-gray-400 text-xs mt-1">Upload brand guidelines in Admin to evaluate content.</p>
+                </>
+              )}
             </div>
           ) : (
             issues.map((issue) => (

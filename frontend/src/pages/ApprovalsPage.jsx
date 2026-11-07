@@ -42,7 +42,7 @@ export default function ApprovalsPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="mb-6 flex items-center gap-3">
-        <ClipboardCheck size={28} className="text-nimbus-blue" />
+        <ClipboardCheck size={28} className="text-brand-blue" />
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Review Queue</h1>
           <p className="text-sm text-gray-500">Content awaiting your review and decision.</p>
@@ -57,8 +57,8 @@ export default function ApprovalsPage() {
         ) : reviews.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <ClipboardCheck size={40} className="mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 font-medium">No items in the review queue.</p>
-            <p className="text-gray-400 text-sm mt-1">Check back when creators submit content.</p>
+            <p className="text-gray-600 font-medium">No items in the review queue.</p>
+            <p className="text-gray-400 text-sm mt-1">Check back when creators submit content for review.</p>
           </div>
         ) : (
           <>
@@ -98,7 +98,7 @@ export default function ApprovalsPage() {
                 <div className="col-span-2 text-right">
                   <Link
                     to={`/review/${r.id}`}
-                    className="inline-flex items-center gap-1 bg-nimbus-blue text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="inline-flex items-center gap-1 bg-brand-blue text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Review <ChevronRight size={12} />
                   </Link>

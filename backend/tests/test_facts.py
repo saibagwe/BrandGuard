@@ -19,10 +19,16 @@ from app.checks.cache import clear_cache
 
 OUTDATED_PRICE_SAMPLE = (
     "Hey guys! You're gonna love our summer deal! "
-    "Get 2.5% APY on your savings account! Nimbus Bank was founded in 1990."
+    "Get 2.5% APY on your savings account! The company was founded in 1990."
 )
 
-CORRECT_FACTS_SAMPLE = "NimbusGrow Savings offers 3.2% APY and was founded in 1987 in Austin, TX."
+CORRECT_FACTS_SAMPLE = "Our savings account offers 3.2% APY and was founded in 1987 in Austin, TX."
+
+INLINE_CONTEXT = {
+    "review_id": "test-facts-001",
+    "facts": "Savings account: 3.2% APY as of Q1 2024. Founded 1987. Headquartered in Austin, TX.",
+    "has_guidelines": True,
+}
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +44,7 @@ class TestFactsModule:
     def test_stub_mode_detects_outdated_apy(self):
         """Stub mode flags planted 2.5% APY and wrong founded year."""
         llm._stub = True
-        issues = facts.run(OUTDATED_PRICE_SAMPLE, {"review_id": "test-facts-001"})
+        issues = facts.run(OUTDATED_PRICE_SAMPLE, INLINE_CONTEXT)
         assert len(issues) >= 2
         apy_issue = [i for i in issues if "2.5%" in i.message][0]
         assert apy_issue.category == "fact"
@@ -51,7 +57,13 @@ class TestFactsModule:
     def test_stub_mode_clean_content(self):
         """Clean content returns no fact issues in stub mode."""
         llm._stub = True
-        issues = facts.run(CORRECT_FACTS_SAMPLE, {"review_id": "test-facts-001"})
+        issues = facts.run(CORRECT_FACTS_SAMPLE, INLINE_CONTEXT)
+        assert len(issues) == 0
+
+    def test_empty_context_returns_no_issues(self):
+        """Empty context returns no fact issues."""
+        llm._stub = True
+        issues = facts.run(OUTDATED_PRICE_SAMPLE, {"review_id": "test-facts-empty"})
         assert len(issues) == 0
 
     def test_mocked_llm_contradicted_and_unverifiable(self):
@@ -65,7 +77,7 @@ class TestFactsModule:
                     "quote": "2.5% APY",
                     "issue_type": "contradicted",
                     "message": "Outdated APY: states 2.5% APY instead of approved 3.2% APY.",
-                    "approved_fact": "NimbusGrow Savings: 3.2% APY as of Q1 2024.",
+                    "approved_fact": "Savings account: 3.2% APY as of Q1 2024.",
                     "source_doc": "Approved Facts",
                     "rule_id": "FACT-APY-001",
                     "suggestion": "Update to 3.2% APY.",
@@ -83,7 +95,7 @@ class TestFactsModule:
         }
 
         with patch.object(llm, "generate_json", return_value=mock_response):
-            issues = facts.run(content, {"review_id": "test-facts-002"})
+            issues = facts.run(content, INLINE_CONTEXT)
             assert len(issues) == 2
 
             contradicted = [i for i in issues if "2.5%" in i.message][0]
@@ -100,26 +112,26 @@ class TestFactsModule:
             assert unverifiable.location.start == content.find("50% cashback on all travel purchases")
 
     def test_invalid_json_retry(self):
-        """Retries once on invalid JSON structure before parsing valid output."""
+        """Retries once on invalid JSON structure before succeeding."""
         llm._stub = False
-        content = "Get 2.5% APY."
-        invalid_resp = {"not_issues": []}
+        content = "Get 2.5% APY on all balances."
+        invalid_resp = {"random": "payload"}
         valid_resp = {
             "issues": [
                 {
                     "quote": "2.5% APY",
                     "issue_type": "contradicted",
-                    "message": "Incorrect APY stated: 2.5% APY.",
-                    "approved_fact": "NimbusGrow Savings: 3.2% APY as of Q1 2024.",
+                    "message": "Contradicts approved 3.2% APY rate.",
+                    "approved_fact": "Savings account: 3.2% APY as of Q1 2024.",
                     "source_doc": "Approved Facts",
-                    "rule_id": "FACT-APY-001",
-                    "suggestion": "Replace with 3.2% APY.",
+                    "rule_id": "FACT-001",
+                    "suggestion": "Use 3.2% APY.",
                 }
             ]
         }
 
         with patch.object(llm, "generate_json", side_effect=[invalid_resp, valid_resp]) as mock_gen:
-            issues = facts.run(content, {"review_id": "test-facts-003"})
+            issues = facts.run(content, INLINE_CONTEXT)
             assert mock_gen.call_count == 2
             assert len(issues) == 1
             assert issues[0].severity == "high"
@@ -133,9 +145,19 @@ class TestFactsModule:
         db = TestingSession()
 
         try:
-            content = "NimbusGrow Savings now gives 4.8% APY."
+            # Seed initial guidelines document in db
+            doc1 = GuidelineDoc(
+                id="fact-doc-001",
+                title="Approved Facts",
+                doc_type="facts",
+                content_text="Savings account: 3.2% APY as of Q1 2024. Founded 1987 in Austin, TX.",
+            )
+            db.add(doc1)
+            db.commit()
 
-            # Review 1: with default approved facts (where APY is 3.2%), LLM flags 4.8% APY as contradicted
+            content = "Savings account now gives 4.8% APY."
+
+            # Review 1: with initial approved facts (where APY is 3.2%), LLM flags 4.8% APY as contradicted
             context1 = orchestrator.build_context_from_db(db, review_id="rev-1")
             assert "3.2% APY" in context1["facts"]
 
@@ -150,7 +172,7 @@ class TestFactsModule:
                             "quote": "4.8% APY",
                             "issue_type": "contradicted",
                             "message": "Contradicted APY: Approved fact states 3.2% APY.",
-                            "approved_fact": "NimbusGrow Savings: 3.2% APY as of Q1 2024.",
+                            "approved_fact": "Savings account: 3.2% APY as of Q1 2024.",
                             "source_doc": "Approved Facts",
                             "rule_id": "FACT-001",
                             "suggestion": "Change to 3.2% APY.",
@@ -168,7 +190,7 @@ class TestFactsModule:
                     id="fact-doc-002",
                     title="Q4 2026 Approved Rates",
                     doc_type="facts",
-                    content_text="NimbusGrow Savings: 4.8% APY as of Q4 2026. FDIC insured up to $250,000.",
+                    content_text="Savings account: 4.8% APY as of Q4 2026. FDIC insured up to $250,000.",
                 )
                 db.add(new_doc)
                 db.commit()

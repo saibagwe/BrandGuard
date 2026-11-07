@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="BrandGuard AI",
-    description="AI-powered brand compliance review platform for Nimbus Bank",
+    description="AI-powered brand compliance review platform",
     version="0.1.0",
     lifespan=lifespan,
 )

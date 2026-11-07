@@ -103,7 +103,7 @@ export default function GuidelinesPage() {
       setGuidelines((prev) =>
         prev.map((g) => (g.id === editingDocId ? res.data : g))
       )
-      setSuccessMsg(`Guideline "${editTitle.trim()}" updated successfully!`)
+      setSuccessMsg('Guideline updated successfully!')
       cancelEdit()
       setTimeout(() => setSuccessMsg(''), 4000)
     } catch (err) {
@@ -114,8 +114,9 @@ export default function GuidelinesPage() {
   }
 
   const handleDelete = async (doc) => {
-    const confirmed = window.confirm(`Are you sure you want to delete guideline "${doc.title}"?`)
-    if (!confirmed) return
+    if (!window.confirm(`Delete "${doc.title}"? This will remove related embedded chunks.`)) {
+      return
+    }
 
     setDeletingId(doc.id)
     setError(null)
@@ -145,11 +146,11 @@ export default function GuidelinesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <BookOpen className="w-7 h-7 text-nimbus-blue" />
+            <BookOpen className="w-7 h-7 text-brand-blue" />
             Brand Guidelines & Knowledge Base
           </h1>
           <p className="text-gray-500 mt-1">
-            Manage approved tone, terminology rules, approved facts, and visual standards for Nimbus Bank.
+            Manage approved tone, terminology rules, approved facts, and visual standards for your brand.
           </p>
         </div>
       </div>
@@ -162,18 +163,21 @@ export default function GuidelinesPage() {
       )}
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      {/* Upload Form - Visible to Admins */}
+      {/* Admin Upload Section */}
       {isAdmin && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-nimbus-navy" />
-            Add New Guideline Document
+          <h2 className="text-lg font-semibold text-gray-800 mb-1 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-brand-blue" />
+            Add New Brand Guideline Document
           </h2>
+          <p className="text-sm text-gray-500 mb-5">
+            Content will be automatically chunked and embedded for AI compliance checking.
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -184,12 +188,13 @@ export default function GuidelinesPage() {
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Tone & Voice Guidelines 2026"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., Q2 2024 Product Facts & Rates"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nimbus-blue focus:border-nimbus-blue"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue"
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Document Type
@@ -197,7 +202,7 @@ export default function GuidelinesPage() {
                 <select
                   value={docType}
                   onChange={(e) => setDocType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nimbus-blue focus:border-nimbus-blue bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue bg-white"
                 >
                   <option value="voice">Brand Voice (brand-voice)</option>
                   <option value="terminology">Terminology & Banned Words</option>
@@ -217,7 +222,7 @@ export default function GuidelinesPage() {
                 value={contentText}
                 onChange={(e) => setContentText(e.target.value)}
                 placeholder="Paste rule details, approved facts, forbidden terms, or design standards..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nimbus-blue focus:border-nimbus-blue text-sm font-mono"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue text-sm font-mono"
               />
             </div>
 
@@ -225,7 +230,7 @@ export default function GuidelinesPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2.5 bg-nimbus-navy hover:bg-nimbus-blue text-white rounded-lg font-medium text-sm transition flex items-center gap-2 shadow disabled:opacity-50"
+                className="px-5 py-2.5 bg-brand-navy hover:bg-brand-blue text-white rounded-lg font-medium text-sm transition flex items-center gap-2 shadow disabled:opacity-50"
               >
                 {submitting ? (
                   <>
@@ -252,12 +257,14 @@ export default function GuidelinesPage() {
 
         {loading ? (
           <div className="p-12 text-center text-gray-400">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-nimbus-blue" />
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-brand-blue" />
             Loading guidelines...
           </div>
         ) : guidelines.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
-            No guidelines loaded yet.
+          <div className="p-12 text-center text-gray-500">
+            <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-600 font-medium text-sm">No brand guidelines yet.</p>
+            <p className="text-gray-400 text-xs mt-1">Upload your brand voice, terminology and approved facts to start reviewing content.</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -270,7 +277,7 @@ export default function GuidelinesPage() {
                   {isEditing ? (
                     <form onSubmit={handleUpdate} className="space-y-4 bg-blue-50/40 p-4 rounded-lg border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-nimbus-navy">Edit Guideline</span>
+                        <span className="text-sm font-semibold text-brand-navy">Edit Guideline</span>
                         <button
                           type="button"
                           onClick={cancelEdit}
@@ -290,7 +297,7 @@ export default function GuidelinesPage() {
                             required
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
-                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-nimbus-blue focus:border-nimbus-blue"
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue"
                           />
                         </div>
                         <div>
@@ -300,7 +307,7 @@ export default function GuidelinesPage() {
                           <select
                             value={editDocType}
                             onChange={(e) => setEditDocType(e.target.value)}
-                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-nimbus-blue focus:border-nimbus-blue bg-white"
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue bg-white"
                           >
                             <option value="voice">Brand Voice</option>
                             <option value="terminology">Terminology & Banned Words</option>
@@ -319,7 +326,7 @@ export default function GuidelinesPage() {
                           rows={4}
                           value={editContentText}
                           onChange={(e) => setEditContentText(e.target.value)}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-nimbus-blue focus:border-nimbus-blue font-mono"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-brand-blue font-mono"
                         />
                       </div>
 
@@ -334,7 +341,7 @@ export default function GuidelinesPage() {
                         <button
                           type="submit"
                           disabled={updating}
-                          className="px-4 py-1.5 bg-nimbus-navy hover:bg-nimbus-blue text-white rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-50"
+                          className="px-4 py-1.5 bg-brand-navy hover:bg-brand-blue text-white rounded-lg text-sm font-medium flex items-center gap-1.5 disabled:opacity-50"
                         >
                           {updating ? (
                             <>
@@ -375,7 +382,7 @@ export default function GuidelinesPage() {
                               <button
                                 onClick={() => startEdit(doc)}
                                 title="Edit Guideline"
-                                className="p-1.5 text-gray-500 hover:text-nimbus-blue hover:bg-blue-50 rounded transition"
+                                className="p-1.5 text-gray-500 hover:text-brand-blue hover:bg-blue-50 rounded transition"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>

@@ -14,7 +14,7 @@ No auth required.
 
 **Request:**
 ```json
-{ "email": "creator@nimbus.bank", "password": "demo1234" }
+{ "email": "creator@brandguard.ai", "password": "demo1234" }
 ```
 
 **Response 200:**
@@ -24,7 +24,7 @@ No auth required.
   "token_type": "bearer",
   "user": {
     "id": "uuid",
-    "email": "creator@nimbus.bank",
+    "email": "creator@brandguard.ai",
     "role": "creator",
     "full_name": "Alex Creator"
   }
@@ -80,7 +80,7 @@ Creators see own reviews. Managers/Reviewers see all in_review+.
 
 ### GET /reviews/sample
 **Auth:** None (public, for frontend dev)  
-Returns hardcoded sample review (Nimbus Bank Summer Campaign with 3 planted issues).
+Returns neutral sample review placeholder.
 
 ---
 
@@ -255,4 +255,4 @@ HTTP status codes: 400 (bad request), 401 (not authenticated), 403 (forbidden), 
 
 ---
 
-*Last updated: Phase 0 — 2026-11-05*
+*Last updated: 2026-11-07*
